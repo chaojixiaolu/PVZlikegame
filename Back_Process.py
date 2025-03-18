@@ -13,6 +13,7 @@ BLACK = (0, 0, 0)
 BLUE = (0, 0, 255)
 ORANGE = (255, 165, 0)
 LIGHTBLUE = (173, 216, 230)
+YELLOW = (255, 255, 0)
 
 # グリッド設定
 GRID_HEIGHT = 80
@@ -121,14 +122,14 @@ class Waterbutton(Plantbutton):
         self.rect = self.image.get_rect(center=self.center)  # 位置を更新
         self.mode = "Water"
         self.draw()
-        
+
 class Thunderbutton(Plantbutton):
     def __init__(self, instance):
         super().__init__(instance)
-        self.color = (255, 255, 0)  # 黄色
-        self.center = (400, 20)  # 位置
-        self.image.fill(self.color)
-        self.rect = self.image.get_rect(center=self.center)
+        self.color = YELLOW
+        self.center = (400, 20)
+        self.image.fill(self.color)  # 色を更新
+        self.rect = self.image.get_rect(center=self.center)  # 位置を更新
         self.mode = "Thunder"
         self.draw()
 
@@ -145,6 +146,7 @@ class PauseButton(pygame.sprite.Sprite):
 
     def Process(self):
         self.instance.paused = not self.instance.paused  # 一時停止状態を切り替える
+
 
 def spawn_Zombie(instance, kind):
     from Character import Zombie, FastZombie  # ここで遅延インポート

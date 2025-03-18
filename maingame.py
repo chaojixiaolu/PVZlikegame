@@ -64,12 +64,6 @@ class maingame():
 
         self.Zombie_last_spawn_time = 0
         self.FastZombie_last_spawn_time = 0
-        self.points = 50  
-        self.Plant_cost = 10
-        self.Rock_cost = 5
-        self.Fire_cost = 20
-        self.Water_cost = 15
-        self.Thunder_cost = 15
         self.selected_plant = "Plant"  # デフォルトの選択植物はPea
         self.deadline = 5
         self.deadcount = 0
@@ -78,6 +72,15 @@ class maingame():
         self.level_up_time = 20000  # 3秒ごとにレベルアップ (ミリ秒単位)
         self.last_levelup = pygame.time.get_ticks()  # 最後にレベルアップした時間を記録
 
+
+        self.points = 50  
+        self.Plant_cost = 10
+        self.Rock_cost = 5
+        self.Fire_cost = 20
+        self.Water_cost = 15
+        self.Thunder_cost = 15
+
+       
 
         self.all_sprites = pygame.sprite.Group()
         self.zombies = pygame.sprite.Group()
@@ -96,7 +99,8 @@ class maingame():
         self.all_sprites.add(self.zombie)
         self.zombies.add(self.zombie)
 
-        screen.fill(WHITE)
+        self.background = pygame.image.load("Assets/BackGround1.png").convert()
+        screen.blit(self.background, (0,0))
         Plantbutton(self)
         Rockbutton(self)
         PauseButton(self)
@@ -165,7 +169,7 @@ class maingame():
 
 
             for event in pygame.event.get():  # イベントループ
-                print(f"Event detected: {event}")  # すべてのイベントを出力
+                # print(f"Event detected: {event}")  # すべてのイベントを出力
                 if event:
                     if event.type == pygame.QUIT:
                         running = False
@@ -236,15 +240,85 @@ class maingame():
                 self.all_sprites.add(new_item)
                 self.yellow_items.add(new_item)
 
-            self.all_sprites.update()
-            self.errors.update()
-            self.traps.update()
-
+            
             self.Zombie_spawn_interval = random.randint(3000, 5000) #ゾンビのスポーン
             self.FastZombie_spawn_interval = random.randint(6000, 8000)
             spawn_Zombie(self, "Zombie")
             if self.current_level > 5:
                 spawn_Zombie(self, "FastZombie")
+
+           
+            
+            zombies_to_remove = [zombie for zombie in self.zombies if zombie.hp <= 0]
+            for zombie in zombies_to_remove:
+                self.zombies.remove(zombie)
+                self.all_sprites.remove(zombie)
+                del zombie
+
+
+            screen.blit(self.background, (0,0))
+
+            # bg_surface = draw_background()
+            # screen.blit(bg_surface, (0, 0))
+
+            self.all_sprites.draw(screen)
+
+            for zombie in self.zombies:
+                zombie.message(screen)
+                if zombie.collide and zombie.collide_Nut and not zombie.collide_Nut.alive():
+                    zombie.collide = False  # ナッツが消えたら再び移動
+                    zombie.collide_Nut = None
+
+            for plant in self.all_sprites:  #絵を描写
+                plant.drawart(screen)
+            
+            for plant in self.all_sprites: #HP描
+                plant.draw_hp(screen)
+
+
+           
+
+            # スコア表示
+            score_text = self.font.render(f"Points: {self.points}", True, BLACK)
+            screen.blit(score_text, (10, 120))
+            
+            # モード表示
+            mode_text = self.font.render(f"Mode: {self.selected_plant}", True, BLACK)
+            screen.blit(mode_text, (screen_width - 200, screen_height - 40))
+
+            # **時間の表示**
+            elapsed_time = (pygame.time.get_ticks() - self.start_time) // 1000  # ミリ秒 → 秒
+            time_text = self.font.render(f"Time: {elapsed_time} s", True, (0, 0, 0))  # 黒色
+            screen.blit(time_text, (screen_width - 150, 120))  # 右上に表示
+
+            # カウント表示
+            count_text = self.font.render(f"{self.deadcount}/{self.deadline}", True, RED)
+            screen.blit(count_text, (10, 150))
+
+            """現在のレベルを表示"""
+            # 画面を黒で塗りつぶし
+            level_text = self.font.render(f"Level: {self.current_level}", True, BLACK)
+            screen.blit(level_text, (10, screen_height -50 ))
+
+            #レベルアップボタン
+            for plant in self.plants:
+                if plant.leveluptext:
+                    plant.show_levelup_text()
+                    plant.leveluptext = False
+    
+            
+            for plant in self.nuts:
+                print(f"{plant.name} leveluptext: {plant.leveluptext}")  # フラグの状態を確認
+                if plant.leveluptext:
+                    plant.show_levelup_text()
+                    plant.leveluptext = False
+
+
+            self.buttons.draw(screen)
+            self.buttons.update()
+            self.traps.draw(screen)
+            for error in self.errors:
+                error.draw()
 
             for plant in self.plants:  # 衝突処理(タネ、ゾンビ)
                 for pea in plant.peas:  # タネとゾンビ衝突
@@ -276,83 +350,11 @@ class maingame():
                             collided_zombie.kill()
                         
             
-            zombies_to_remove = [zombie for zombie in self.zombies if zombie.hp <= 0]
-            for zombie in zombies_to_remove:
-                self.zombies.remove(zombie)
-                self.all_sprites.remove(zombie)
-                del zombie
+            self.all_sprites.update()
+            self.errors.update()
+            self.traps.update()
 
 
-            screen.fill(WHITE)
-
-            bg_surface = draw_background()
-            screen.blit(bg_surface, (0, 0))
-
-            for i in range(GRID_C_Number):
-                for j in range(GRID_V_Number):
-                    pygame.draw.circle(screen, RED, GRID_CENTER[i][j], 10)
-                pygame.draw.circle(screen, RED, (GRID_C[i], GRID_V[GRID_V_Number-1]+GRID_WIDTH), 10)
-
-            self.all_sprites.draw(screen)
-
-            for zombie in self.zombies:
-                zombie.draw_hp_bar(screen)  # HPバーを描画
-                zombie.message(screen)
-                if zombie.collide and zombie.collide_Nut and not zombie.collide_Nut.alive():
-                    zombie.collide = False  # ナッツが消えたら再び移動
-                    zombie.collide_Nut = None
-
-            for plant in self.plants:
-                plant.draw_hp_bar(screen)
-
-            for nut in self.nuts:
-                nut.draw_hp_bar(screen)
-
-           
-
-            # スコア表示
-            score_text = self.font.render(f"Points: {self.points}", True, BLACK)
-            screen.blit(score_text, (10, 120))
-            
-            # モード表示
-            mode_text = self.font.render(f"Mode: {self.selected_plant}", True, BLACK)
-            screen.blit(mode_text, (screen_width - 200, screen_height - 40))
-
-            # **時間の表示**
-            elapsed_time = (pygame.time.get_ticks() - self.start_time) // 1000  # ミリ秒 → 秒
-            time_text = self.font.render(f"Time: {elapsed_time} s", True, (0, 0, 0))  # 黒色
-            screen.blit(time_text, (screen_width - 150, 120))  # 右上に表示
-
-            # カウント表示
-            count_text = self.font.render(f"{self.deadcount}/{self.deadline}", True, RED)
-            screen.blit(count_text, (10, 150))
-
-            """現在のレベルを表示"""
-            # 画面を黒で塗りつぶし
-            level_text = self.font.render(f"Level: {self.current_level}", True, BLACK)
-            screen.blit(level_text, (10, screen_height -50 ))
-
-            #レベルアップボタン
-            for plant in self.plants:
-                if plant.leveluptext:
-                    plant.show_levelup_text()
-                    plant.leveluptext = False
-            
-            for plant in self.nuts:
-                print(f"{plant.name} leveluptext: {plant.leveluptext}")  # フラグの状態を確認
-                if plant.leveluptext:
-                    plant.show_levelup_text()
-                    plant.leveluptext = False
-
-
-            self.buttons.draw(screen)
-            self.buttons.update()
-            self.traps.draw(screen)
-                              
-            
-            for error in self.errors:
-                error.draw()
-            
             pygame.display.flip()
 
             clock.tick(30)
