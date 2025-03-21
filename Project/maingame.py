@@ -257,7 +257,7 @@ class maingame():
 
 
             screen.blit(self.background, (0,0))
-            screen.fill(BLACK)
+            # screen.fill(BLACK)
             # bg_surface = draw_background()
             # screen.blit(bg_surface, (0, 0))
 

@@ -532,13 +532,13 @@ class Fire(Plant):
         self.upper_plant = "StrongFire"
         self.instance = instance
 
-        self.frame_count = 0  # アニメーションのフレーム管理
-        self.animation_frames = []  # アニメーションフレームを格納するリスト
+        self.frame_count = 0  
+        self.animation_frames = []  
         self.frame = 70
         self.load_animation_frames()
 
     def load_animation_frames(self): # アニメーションフレームを読み込む    
-        for i in range(self.frame):  # 1から20フレームまで
+        for i in range(self.frame):  
             img_path = f"Assets/Fire/Fire_{i:05}.png"
             if os.path.exists(img_path):
                 frame = pygame.image.load(img_path)
@@ -646,13 +646,17 @@ class Fire(Plant):
 class Water(Plant):
     def __init__(self, x, y, instance):
         super().__init__(x, y, instance)
-        self.image.fill(LIGHTBLUE)
         self.name = "Water"
         self.levelup_cost = 50
         self.cost = 15
         self.upper_plant = "StrongWater"
         self.instance = instance
         self.attack_interval = 2000
+
+        self.frame_count = 0  
+        self.animation_frames = []  
+        self.frame = 50
+        self.load_animation_frames()
         
 
     def shoot_pea(self):
@@ -660,16 +664,57 @@ class Water(Plant):
         self.peas.add(pea)
         self.instance.all_sprites.add(pea)
 
+    def load_animation_frames(self): # アニメーションフレームを読み込む    
+            for i in range(self.frame):  
+                img_path = f"Assets/Water/Water_{i:05}.png"
+                if os.path.exists(img_path):
+                    frame = pygame.image.load(img_path)
+                    self.animation_frames.append(frame)
+                else:
+                    print(f"Warning: {img_path} not found")
+
+    def drawart(self, screen):
+        # アニメーションを描画
+        if self.animation_frames:
+            frame = self.animation_frames[self.frame_count]  # 現在のフレームを選択
+            screen.blit(frame, (self.rect.x - 210, self.rect.y - 210))  # アニメーションフレームを描画
+        else:
+            print("No animation frames to draw!")
+        self.frame_count = (self.frame_count + 1) % self.frame
+
+
     class WaterPea(Plant.Pea):
         def __init__(self, x, y, plant):
             super().__init__(x, y)
-            self.image = pygame.Surface((100, 5))
-            self.image.fill(LIGHTBLUE)
+            self.image = pygame.Surface((100, 5), pygame.SRCALPHA)
             self.plant = plant
             self.attack = 30
             self.attacked_zombies = set()  # 攻撃済みのゾンビを記録
             self.lifetime = 200
             self.speed = 5
+
+            self.frame_count = 0  
+            self.animation_frames = []  
+            self.frames = 30
+            self.load_animation_frames()
+
+        def load_animation_frames(self): # アニメーションフレームを読み込む    
+            for i in range(self.frames):  
+                img_path = f"Assets/WaterPea/WaterPea_{i:05}.png"
+                if os.path.exists(img_path):
+                    frame = pygame.image.load(img_path)
+                    self.animation_frames.append(frame)
+                else:
+                    print(f"Warning: {img_path} not found")
+
+        def drawart(self, screen):
+            # アニメーションを描画
+            if self.animation_frames:
+                frame = self.animation_frames[self.frame_count]  # 現在のフレームを選択
+                screen.blit(frame, (self.rect.x - 100, self.rect.y - 5))  # アニメーションフレームを描画
+            else:
+                print("No animation frames to draw!")
+            self.frame_count = (self.frame_count + 1) % self.frames
 
         def update(self):
             self.rect.x += self.speed  # 右に移動
