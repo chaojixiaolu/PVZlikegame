@@ -262,18 +262,16 @@ class maingame():
             # screen.blit(bg_surface, (0, 0))
 
             for trap in self.traps:
-                if hasattr(trap, 'drawart'):
-                    trap.drawart(screen)
+                drawart(screen, trap)
             self.all_sprites.draw(screen)
 
             for plant in self.all_sprites:  #絵を描写
-                plant.drawart(screen)
+                drawart(screen, plant)
             
-            for plant in self.all_sprites: #HP描
-                plant.draw_hp(screen)
-
-
-           
+            for plant in self.plants: #HP
+                draw_hp(screen, plant, GREEN)
+            for zombie in self.zombies:
+                draw_hp(screen, zombie, RED)
 
             # スコア表示
             score_text = self.font.render(f"Points: {self.points}", True, BLACK)
@@ -303,26 +301,19 @@ class maingame():
                 if zombie.collide and zombie.collide_Nut and not zombie.collide_Nut.alive():
                     zombie.collide = False  # ナッツが消えたら再び移動
                     zombie.collide_Nut = None
-                if hasattr(zombie, 'drawattack'):  # drawattackがあるか確認
-                    zombie.drawattack(screen, zombie.is_attacking)  # 実行
+                drawattack(screen, zombie)
 
-            
             for plant in self.plants:
                 if plant.leveluptext:
                     plant.show_levelup_text()
                     plant.leveluptext = False
-                    if hasattr(plant, 'drawattack'):  # drawattackがあるか確認
-                        plant.drawattack(screen, plant.is_attacking)  # 実行
-
-    
-            
+                drawattack(screen, plant)
+       
             for plant in self.nuts:
                 if plant.leveluptext:
                     plant.show_levelup_text()
                     plant.leveluptext = False
-                if hasattr(plant, 'drawattack'):  # drawattackがあるか確認
-                    plant.drawattack(screen, plant.is_attacking)  # 実行
-
+                drawattack(screen, plant)
 
             self.buttons.draw(screen)
             self.buttons.update()
@@ -344,12 +335,13 @@ class maingame():
                 collided_zombie = pygame.sprite.spritecollideany(plant, self.zombies)
                 if collided_zombie:
                     collided_zombie.damage_to_plant(plant)
+                    collided_zombie.is_attacking = plant
                     
-
             for Nut in self.nuts:  # 衝突処理(rock、ゾンビ)
                 collided_zombie = pygame.sprite.spritecollideany(Nut, self.zombies)
                 if collided_zombie:
                     collided_zombie.collide_stop(Nut)
+                    collided_zombie.is_attacking = Nut
 
             for trap in self.traps:  # トラッぷとゾンビ衝突
                     collided_zombie = pygame.sprite.spritecollideany(trap, self.zombies)
@@ -359,14 +351,11 @@ class maingame():
                         if collided_zombie.hp <= 0:
                             collided_zombie.kill()  # HPが0になったら削除
                             collided_zombie.kill()
-
              
             self.traps.update()
             self.all_sprites.update()
             self.errors.update()
             
-
-
             pygame.display.flip()
 
             clock.tick(30)

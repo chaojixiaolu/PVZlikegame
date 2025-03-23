@@ -51,7 +51,10 @@ class Plant(pygame.sprite.Sprite):
         self.instance = instance
         self.image = pygame.Surface((80, 80), pygame.SRCALPHA)  # 透過サーフェス
         self.rect = self.image.get_rect()
-        self.art = pygame.image.load("Assets/Plant.png")  # 画像を読み込む
+        self.animation = False
+        self.attack_animation = True
+        self.path = "Assets/Plant"
+        load_animation_frames(self)
         self.rect.x = x
         self.rect.y = y
         self.peas = pygame.sprite.Group()
@@ -75,25 +78,6 @@ class Plant(pygame.sprite.Sprite):
 
         instance.all_sprites.add(self)
         instance.plants.add(self)
-
-    def drawart(self, screen): #画像読み込み
-        screen.blit(self.image, self.rect)
-        self.art_rect = self.art.get_rect()
-        self.dif = (self.art_rect.width - self.rect.width)/2
-        screen.blit(self.art, (self.rect.x - self.dif, self.rect.y - self.dif))
-    
-    def draw_hp(self, screen):
-        """HPバーをプラントの上に描画"""
-        bar_x = self.rect.x
-        bar_y = self.rect.y - 10  # ゾンビの上に配置
-        hp_ratio = self.hp / self.max_hp  # HPの割合
-        hp_width = int(self.hp_bar_width * hp_ratio)  # HPバーの現在の長さ
-        self.screen = screen
-
-        # HPバーの枠（黒）
-        pygame.draw.rect(screen, (0, 0, 0), (bar_x - 1, bar_y - 1, self.hp_bar_width + 2, 6))
-        # HPバーの本体（緑）
-        pygame.draw.rect(screen, GREEN, (bar_x, bar_y, hp_width, 4))
        
     def update(self):
         self.current_time = self.instance.current_time
@@ -224,9 +208,11 @@ class Plant(pygame.sprite.Sprite):
             self.rect.y = y
             self.speed = 5
             self.attack = 20
-
-        def drawart(self, screen):
-            screen.blit(self.art, (self.rect.x - 120, self.rect.y - 122.5))
+            
+            self.animation = False
+            self.attack_animation = False
+            self.path = "Assets/Pea"
+            load_animation_frames(self)
 
         def draw_hp(self, screen):
             pass
@@ -249,29 +235,13 @@ class StrongPlant(Plant):
         self.max_hp = 200
         self.hp = self.max_hp
 
+        self.path = "Assets/StrongPlant/StrongPlant"
+        self.animation = True
+        self.attack_animation = False
         self.frame_count = 0  # アニメーションのフレーム管理
         self.animation_frames = []  # アニメーションフレームを格納するリスト
-        self.frame = 40
-        self.load_animation_frames()
-        
-    
-    def load_animation_frames(self): # アニメーションフレームを読み込む    
-        for i in range(self.frame + 1):  # 1から20フレームまで
-            img_path = f"Assets/StrongPlant/StrongPlant_{i:05}.png"
-            if os.path.exists(img_path):
-                frame = pygame.image.load(img_path)
-                self.animation_frames.append(frame)
-            else:
-                print(f"Warning: {img_path} not found")
-
-    def drawart(self, screen):
-        # アニメーションを描画
-        if self.animation_frames:
-            frame = self.animation_frames[self.frame_count]  # 現在のフレームを選択
-            screen.blit(frame, (self.rect.x - 210, self.rect.y - 210))  # アニメーションフレームを描画
-        else:
-            print("No animation frames to draw!")
-        self.frame_count = (self.frame_count + 1) % self.frame
+        self.frames = 40
+        load_animation_frames(self)
         
     def draw_hp(self, screen):
         """HPバーをプラントの上に描画"""
@@ -302,10 +272,10 @@ class Rock(pygame.sprite.Sprite):
     def __init__(self, x, y, instance):
         super().__init__()
         self.instance = instance
+        self.screen = instance.screen
         self.name = "Rock"
         self.image = pygame.Surface((80, 80), pygame.SRCALPHA)
         self.rect = self.image.get_rect()
-        self.art = pygame.image.load("Assets/Rock.png")  # 画像を読み込む
         self.rect.x = x
         self.rect.y = y
         self.upper_plant = "Obsidian"
@@ -317,30 +287,16 @@ class Rock(pygame.sprite.Sprite):
         instance.nuts.add(self)
         instance.all_sprites.add(self)
         
-
         self.max_hp = 200  # 最大HP
         self.hp = self.max_hp  # 現在のHP
         self.hp_bar_width = 80  # HPバーの横幅
 
         self.button_sprites = pygame.sprite.Group()
 
-    def drawart(self, screen):
-        screen.blit(self.image, self.rect)
-        screen.blit(self.art, (self.rect.x - 210, self.rect.y - 210))
-
-    
-    def draw_hp(self, screen):
-        """HPバーをプラントの上に描画"""
-        bar_x = self.rect.x
-        bar_y = self.rect.y - 10  # ゾンビの上に配置
-        hp_ratio = self.hp / self.max_hp  # HPの割合
-        hp_width = int(self.hp_bar_width * hp_ratio)  # HPバーの現在の長さ
-        self.screen = screen
-
-        # HPバーの枠（黒）
-        pygame.draw.rect(screen, (0, 0, 0), (bar_x - 1, bar_y - 1, self.hp_bar_width + 2, 6))
-        # HPバーの本体（緑）
-        pygame.draw.rect(screen, GREEN, (bar_x, bar_y, hp_width, 4))
+        self.path = "Assets/Rock"
+        self.animation = False
+        self.attack_animation = False
+        load_animation_frames(self)
 
     def update(self):
         if self.hp <= 0:
@@ -351,8 +307,6 @@ class Rock(pygame.sprite.Sprite):
         self.hp -= damage
         if self.hp <= 0:
             self.kill()
-    
-    
 
     def show_levelup_text(self):
         self.LevelupButton(self, self.instance)
@@ -465,16 +419,19 @@ class Obsidian(Rock):
         self.attack = 40
         
         self.is_attacking = False  # 攻撃中フラグ
-
+        self.animation = True
+        self.attack_animation = True
+        self.path = "Assets/Obsidian/Obsidian"
+        self.attack_path = "Assets/ObsidianAttack/ObsidianAttack"
         self.frame_count = 0  
         self.animation_frames = []  
         self.frames = 70
         self.attack_frame_count = 0
         self.attack_animation_frames = []
         self.attack_frames = 30
-        self.load_animation_frames()
+        load_animation_frames(self)
+        load_attack_animation_frames(self)
         
-
     def take_damage(self, damage, zombie):
         """Nutにダメージを与える"""
         self.hp -= damage
@@ -482,46 +439,7 @@ class Obsidian(Rock):
         self.is_attacking = zombie
         if self.hp <= 0:
             self.kill()
-    
-    def load_animation_frames(self): # アニメーションフレームを読み込む    
-        for i in range(self.frames + 1):
-            img_path = f"Assets/Obsidian/Obsidian_{i:05}.png"
-            if os.path.exists(img_path):
-                frame = pygame.image.load(img_path)
-                self.animation_frames.append(frame)
-            else:
-                print(f"Warning: {img_path} not found")
-        for j in range(self.attack_frames + 1):
-            img_path = f"Assets/ObsidianAttack/ObsidianAttack_{j:05}.png"
-            if os.path.exists(img_path):
-                frame = pygame.image.load(img_path)
-                self.attack_animation_frames.append(frame)
-                
-            else:
-                print(f"Warning: {img_path} not found")
-        
-
-    def drawart(self, screen):
-        # アニメーションを描画
-        if self.animation_frames:
-            frame = self.animation_frames[self.frame_count]  # 現在のフレームを選択
-            screen.blit(frame, (self.rect.x - 210, self.rect.y - 210))  # アニメーションフレームを描画
-        else:
-            print("No animation frames to draw!")
-        self.frame_count = (self.frame_count + 1) % self.frames
-
-    
-    def drawattack(self, screen, target):
-        """攻撃アニメーションを再生する"""
-        if self.is_attacking:
-            if self.attack_frame_count < self.attack_frames:
-                attack_frame = self.attack_animation_frames[self.attack_frame_count]
-                screen.blit(attack_frame, (target.rect.x - 60, target.rect.y - 60))
-                self.attack_frame_count += 1
-            else:
-                self.attack_frame_count = 0
-                self.is_attacking = False  # 攻撃終了
-       
+          
 class Fire(Plant):
     def __init__(self, x, y, instance):
         super().__init__(x, y, instance)
@@ -532,62 +450,31 @@ class Fire(Plant):
         self.upper_plant = "StrongFire"
         self.instance = instance
 
+        self.path = "Assets/Fire/Fire"
+        self.animation = True
+        self.attack_animation = False
         self.frame_count = 0  
         self.animation_frames = []  
-        self.frame = 70
-        self.load_animation_frames()
-
-    def load_animation_frames(self): # アニメーションフレームを読み込む    
-        for i in range(self.frame):  
-            img_path = f"Assets/Fire/Fire_{i:05}.png"
-            if os.path.exists(img_path):
-                frame = pygame.image.load(img_path)
-                self.animation_frames.append(frame)
-            else:
-                print(f"Warning: {img_path} not found")
-
+        self.frames = 70
+        load_animation_frames(self)
+        
     def shoot_pea(self):
         pea = self.FirePea(self.rect.x + self.rect.width, self.rect.y + 20, self)  
         self.peas.add(pea)
         self.instance.all_sprites.add(pea)
-
-    def drawart(self, screen):
-        # アニメーションを描画
-        if self.animation_frames:
-            frame = self.animation_frames[self.frame_count]  # 現在のフレームを選択
-            screen.blit(frame, (self.rect.x - 210, self.rect.y - 210))  # アニメーションフレームを描画
-        else:
-            print("No animation frames to draw!")
-        self.frame_count = (self.frame_count + 1) % self.frame
 
     class FirePea(Plant.Pea):
         def __init__(self, x, y, plant):
             super().__init__(x, y)
             self.plant = plant
             self.attack = 10
-
+            
+            self.animation = True
+            self.path = "Assets/FirePea/FirePea"
             self.frame_count = 0  
             self.animation_frames = []  
             self.frames = 25
-            self.load_animation_frames()
-
-        def load_animation_frames(self):
-            for i in range(self.frames):
-                img_path = f"Assets/FirePea/FirePea_{i:05}.png"
-                if os.path.exists(img_path):
-                    frame = pygame.image.load(img_path)
-                    self.animation_frames.append(frame)
-                else:
-                    print(f"Warning: {img_path} not found")
-
-        def drawart(self, screen):
-            # アニメーションを描画
-            if self.animation_frames:
-                frame = self.animation_frames[self.frame_count]  # 現在のフレームを選択
-                screen.blit(frame, (self.rect.x - 120, self.rect.y - 122.5))  # アニメーションフレームを描画
-            else:
-                print("No animation frames to draw!")
-            self.frame_count = (self.frame_count + 1) % self.frames
+            load_animation_frames(self)
 
         def collide(self, zombie):
             self.collide_pos = get_grid_center(zombie.rect.x, zombie.rect.y)
@@ -608,30 +495,14 @@ class Fire(Plant):
                 self.rect = self.image.get_rect()
                 self.rect.topleft = pos
 
+                self.animation = True
+                self.attack_animation = False
+                self.path = "Assets/FireTrap/FireTrap"
                 self.frame_count = 0  
                 self.animation_frames = []  
                 self.frames = 25
-                self.load_animation_frames()
-                
-            def load_animation_frames(self):
-                for i in range(self.frames):
-                    img_path = f"Assets/FireTrap/FireTrap_{i:05}.png"
-                    if os.path.exists(img_path):
-                        frame = pygame.image.load(img_path)
-                        self.animation_frames.append(frame)
-                    else:
-                        print(f"Warning: {img_path} not found")
-                
-            def drawart(self, screen):
-                # アニメーションを描画
-                if self.animation_frames:
-                    frame = self.animation_frames[self.frame_count]  # 現在のフレームを選択
-                    screen.blit(frame, (self.rect.x - 0, self.rect.y - 0))  # アニメーションフレームを描画
-                else:
-                    print("No animation frames to draw!")
-                self.frame_count = (self.frame_count + 1) % self.frames
-                
-
+                load_animation_frames(self)
+                       
             def collide(self, zombie):
                 self.current_time = pygame.time.get_ticks()
                 if self.current_time % 1000 < 50:
@@ -653,35 +524,17 @@ class Water(Plant):
         self.instance = instance
         self.attack_interval = 2000
 
+        self.animation = True
+        self.path = "Assets/Water/Water"
         self.frame_count = 0  
         self.animation_frames = []  
-        self.frame = 50
-        self.load_animation_frames()
+        self.frames = 50
+        load_animation_frames(self)
         
-
     def shoot_pea(self):
         pea = self.WaterPea(self.rect.x + self.rect.width, self.rect.y + 20, self)  
         self.peas.add(pea)
         self.instance.all_sprites.add(pea)
-
-    def load_animation_frames(self): # アニメーションフレームを読み込む    
-            for i in range(self.frame):  
-                img_path = f"Assets/Water/Water_{i:05}.png"
-                if os.path.exists(img_path):
-                    frame = pygame.image.load(img_path)
-                    self.animation_frames.append(frame)
-                else:
-                    print(f"Warning: {img_path} not found")
-
-    def drawart(self, screen):
-        # アニメーションを描画
-        if self.animation_frames:
-            frame = self.animation_frames[self.frame_count]  # 現在のフレームを選択
-            screen.blit(frame, (self.rect.x - 210, self.rect.y - 210))  # アニメーションフレームを描画
-        else:
-            print("No animation frames to draw!")
-        self.frame_count = (self.frame_count + 1) % self.frame
-
 
     class WaterPea(Plant.Pea):
         def __init__(self, x, y, plant):
@@ -693,28 +546,12 @@ class Water(Plant):
             self.lifetime = 200
             self.speed = 5
 
+            self.animation = True
+            self.path = "Assets/WaterPea/WaterPea"
             self.frame_count = 0  
             self.animation_frames = []  
             self.frames = 30
-            self.load_animation_frames()
-
-        def load_animation_frames(self): # アニメーションフレームを読み込む    
-            for i in range(self.frames):  
-                img_path = f"Assets/WaterPea/WaterPea_{i:05}.png"
-                if os.path.exists(img_path):
-                    frame = pygame.image.load(img_path)
-                    self.animation_frames.append(frame)
-                else:
-                    print(f"Warning: {img_path} not found")
-
-        def drawart(self, screen):
-            # アニメーションを描画
-            if self.animation_frames:
-                frame = self.animation_frames[self.frame_count]  # 現在のフレームを選択
-                screen.blit(frame, (self.rect.x - 100, self.rect.y - 5))  # アニメーションフレームを描画
-            else:
-                print("No animation frames to draw!")
-            self.frame_count = (self.frame_count + 1) % self.frames
+            load_animation_frames(self)
 
         def update(self):
             self.rect.x += self.speed  # 右に移動
@@ -804,7 +641,6 @@ class Zombie(pygame.sprite.Sprite):
         self.name = "Zombie"
         self.image = pygame.Surface((80, 80), pygame.SRCALPHA)   
         self.rect = self.image.get_rect()
-        self.art = pygame.image.load("Assets/Zombie.png")  # 画像を読み込む
         self.rect.x = x
         self.rect.y = y
         self.speed = 1
@@ -825,41 +661,16 @@ class Zombie(pygame.sprite.Sprite):
 
         self.is_attacking = False
 
+        self.animation = False
+        self.attack_animation = True
+        self.path = "Assets/Zombie"
+        self.attack_path = "Assets/ZombieAttack/ZombieAttack"
         self.attack_frame_count = 0  # アニメーションのフレーム管理
         self.attack_animation_frames = []  # アニメーションフレームを格納するリスト
         self.attack_frames = 30
-        self.load_animation_frames()
+        load_animation_frames(self)
+        load_attack_animation_frames(self)
     
-    def load_animation_frames(self):
-        # アニメーションフレームを読み込む
-        for i in range(31):  # 1から30フレームまで
-            img_path = f"Assets/ZombieAttack/ZombieAttack_{i:05}.png"
-            if os.path.exists(img_path):
-                frame = pygame.image.load(img_path)
-                self.attack_animation_frames.append(frame)
-            else:
-                print(f"Warning: {img_path} not found")
-
-    def drawart(self, screen):
-        screen.blit(self.image, self.rect)
-        self.art_rect = self.art.get_rect()
-        self.dif = (self.art_rect.width - self.rect.width)/2
-        screen.blit(self.art, (self.rect.x - self.dif, self.rect.y - self.dif))
-    
-    def draw_hp(self, screen):
-        """HPバーをゾンビの上に描画"""
-        bar_x = self.rect.x
-        bar_y = self.rect.y - 10  # ゾンビの上に配置
-        hp_ratio = self.hp / self.max_hp  # HPの割合
-        hp_width = int(self.hp_bar_width * hp_ratio)  # HPバーの現在の長さ
-        
-        # HPバーの枠（黒）
-        pygame.draw.rect(screen, (0, 0, 0), (bar_x - 1, bar_y - 1, self.hp_bar_width + 2, 6))
-        # HPバーの本体（赤）
-        pygame.draw.rect(screen, (255, 0, 0), (bar_x, bar_y, hp_width, 4))
-        self.level_text = self.instance.font.render(f"level{self.level}", True, RED)
-        screen.blit(self.level_text, (bar_x, bar_y - 20))
-
     def collide_stop(self, collide_Nut):
         """ ゾンビをナッツの手前で止める """
         if not self.collide:
@@ -869,7 +680,6 @@ class Zombie(pygame.sprite.Sprite):
             self.collide_Nut.take_damage(self.attack, self)  # ナッツに接触した瞬間に攻撃を開始する
             self.last_attack_time[self.collide_Nut] = self.instance.current_time
  
-    
     def update(self):
         """ ゾンビの移動と攻撃処理 """
         if self.collide:
@@ -910,22 +720,6 @@ class Zombie(pygame.sprite.Sprite):
                 self.hp -= target.attack
             self.last_attack_time[target] = self.current_time  # 次の攻撃時間を更新
             
-        
-        
-    
-    def drawattack(self, screen, target):
-        
-        """攻撃アニメーションを再生する"""
-        if self.is_attacking:
-            if self.attack_frame_count < self.attack_frames:
-                attack_frame = self.attack_animation_frames[self.attack_frame_count]
-                screen.blit(attack_frame, (target.rect.x - 60, target.rect.y - 60))
-                self.attack_frame_count += 1
-                print(f"Drawing attack frame: {self.attack_frame_count}/{self.attack_frames}")
-            else:
-                self.attack_frame_count = 0
-                self.is_attacking = False  # 攻撃終了
-
 class FastZombie(Zombie):
     def __init__(self, x, y, instance):
         super().__init__(x, y, instance)
@@ -943,35 +737,14 @@ class YellowItem(pygame.sprite.Sprite):
         self.rect.y = -self.rect.height  
         self.speed = 1  
 
-
-        self.frame_count = 0  # アニメーションのフレーム管理
-        self.animation_frames = []  # アニメーションフレームを格納するリスト
-        # アニメーション用の画像を読み込む
-        self.load_animation_frames()
-    
-    def load_animation_frames(self):
-        # アニメーションフレームを読み込む
-        for i in range(41):  
-            img_path = f"Assets/YellowItem/YellowItem_{i:05}.png"
-            if os.path.exists(img_path):
-                frame = pygame.image.load(img_path)
-                self.animation_frames.append(frame)
-            else:
-                print(f"Warning: {img_path} not found")
-    
-    def drawart(self, screen):
-        # アニメーションを描画
-        if self.animation_frames:
-            frame = self.animation_frames[self.frame_count]  # 現在のフレームを選択
-            screen.blit(frame, (self.rect.x - 90, self.rect.y - 90))  # アニメーションフレームを描画
-        else:
-            print("No animation frames to draw!")
-        self.frame_count = (self.frame_count + 1) % 40
+        self.animation = True
+        self.attack_animation = False
+        self.path = "Assets/YellowItem/YellowItem"
+        self.frame_count = 0
+        self.frames =  50
+        self.animation_frames = []  
+        load_animation_frames(self)
         
-
-    def draw_hp(self, screen):
-        pass
-
     def update(self):
         self.rect.y += self.speed  
         if self.rect.y > screen_height:  

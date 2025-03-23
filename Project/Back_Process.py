@@ -1,6 +1,6 @@
 import pygame
 import random
-
+import os
 
 screen_width = 800
 screen_height = 600
@@ -147,6 +147,79 @@ class PauseButton(pygame.sprite.Sprite):
     def Process(self):
         self.instance.paused = not self.instance.paused  # 一時停止状態を切り替える
 
+def draw_hp(screen, plant, Color):
+        """HPバーをプラントの上に描画"""
+        bar_x = plant.rect.x
+        bar_y = plant.rect.y - 10  # ゾンビの上に配置
+        hp_ratio = plant.hp / plant.max_hp  # HPの割合
+        hp_width = int(plant.hp_bar_width * hp_ratio)  # HPバーの現在の長さ
+        plant.screen = screen
+
+        # HPバーの枠（黒）
+        pygame.draw.rect(screen, (0, 0, 0), (bar_x - 1, bar_y - 1, plant.hp_bar_width + 2, 6))
+        # HPバーの本体（緑）
+        pygame.draw.rect(screen, Color, (bar_x, bar_y, hp_width, 4))
+        
+def load_animation_frames(instance): # アニメーションフレームを読み込む
+    if instance.animation:    
+        for i in range(instance.frames):  
+            img_path = f"{instance.path}_{i:05}.png"
+            if os.path.exists(img_path):
+                frame = pygame.image.load(img_path)
+                if i == 0:
+                    instance.art_rect = frame.get_rect()
+                    instance.art_dif_x = (instance.art_rect.width - instance.rect.width)/2
+                    instance.art_dif_y = (instance.art_rect.height - instance.rect.height)/2
+                instance.animation_frames.append(frame)
+            else:
+                print(f"Warning: {img_path} not found")
+    else:
+        img_path = f"{instance.path}.png"
+        instance.art = pygame.image.load(img_path)
+        instance.art_rect = instance.art.get_rect()
+        instance.art_dif_x = (instance.art_rect.width - instance.rect.width)/2
+        instance.art_dif_y = (instance.art_rect.height - instance.rect.height)/2
+
+def load_attack_animation_frames(instance):
+    if instance.attack_animation:
+        for j in range(instance.attack_frames + 1):
+            img_path = f"{instance.attack_path}_{j:05}.png"
+            if os.path.exists(img_path):
+                frame = pygame.image.load(img_path)
+                instance.attack_animation_frames.append(frame)    
+            else:
+                print(f"Warning: {img_path} not found")
+    else:
+        pass
+
+def drawattack(screen, instance):
+    if not hasattr(instance, "is_attacking"):  # instanceがis_attackingを持っていない場合はスキップ
+        return
+    
+    if instance.attack_animation:
+        """攻撃アニメーションを再生する"""
+        if instance.is_attacking:
+            target = instance.is_attacking
+            if instance.attack_frame_count < instance.attack_frames:
+                attack_frame = instance.attack_animation_frames[instance.attack_frame_count]
+                screen.blit(attack_frame, (target.rect.x - 60, target.rect.y - 60))
+                instance.attack_frame_count += 1
+            else:
+                instance.attack_frame_count = 0
+                instance.is_attacking = False  # 攻撃終了
+
+def drawart(screen, instance):
+    if instance.animation:
+        # アニメーションを描画
+        if instance.animation_frames:
+            frame = instance.animation_frames[instance.frame_count]  # 現在のフレームを選択
+            screen.blit(frame, (instance.rect.x - instance.art_dif_x, instance.rect.y - instance.art_dif_y))  # アニメーションフレームを描画
+        else:
+            print("No animation frames to draw!")
+        instance.frame_count = (instance.frame_count + 1) % instance.frames
+    else:
+        screen.blit(instance.image, instance.rect)
+        screen.blit(instance.art, (instance.rect.x - instance.art_dif_x, instance.rect.y - instance.art_dif_y))
 
 def spawn_Zombie(instance, kind):
     from Character import Zombie, FastZombie  # ここで遅延インポート
