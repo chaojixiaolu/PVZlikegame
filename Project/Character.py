@@ -282,9 +282,11 @@ class Rock(pygame.sprite.Sprite):
         self.levelup_cost = 30
         self.leveluptext = False
         self.attack = 0
+        self.stop_zombie = True
          # Nut植物はHPが高い（攻撃はしないがゾンビを止める）
 
-        instance.nuts.add(self)
+        
+        instance.plants.add(self)
         instance.all_sprites.add(self)
         
         self.max_hp = 200  # 最大HP
@@ -343,7 +345,7 @@ class Rock(pygame.sprite.Sprite):
                     self.new_plant = self.upper_class(self.plant.rect.x, self.plant.rect.y, self.instance)
                     self.plant.kill()
                     self.instance.all_sprites.add(self.new_plant)
-                    self.instance.nuts.add(self.new_plant)
+                    self.instance.plants.add(self.new_plant)
                     self.instance.points -= self.plant.levelup_cost
                     for sprite in self.plant.button_sprites:
                         sprite.kill()
@@ -356,7 +358,6 @@ class Rock(pygame.sprite.Sprite):
             if not self.plant.alive():  # 親が生存しているかチェック
                 self.kill()  # 自分も削除
         
-
     class noLevelupButton(pygame.sprite.Sprite):
             def __init__(self, plant, instance):
                 super().__init__()
@@ -719,7 +720,20 @@ class Zombie(pygame.sprite.Sprite):
                 target.hp -= self.attack # ナッツへのダメージ
                 self.hp -= target.attack
             self.last_attack_time[target] = self.current_time  # 次の攻撃時間を更新
-            
+    
+    def drop_item(self):
+        self.instance.points += 10
+        self.drop_dict = {}
+        self.drop_rand = random.randint(1, 100)
+        if self.drop_rand <= 25:
+            self.drop_dict["fire element"] = 1
+        elif self.drop_rand <= 50:
+            self.drop_dict["water element"] = 1
+        elif self.drop_rand <= 75:
+            self.drop_dict["thunder element"] = 1
+        
+
+
 class FastZombie(Zombie):
     def __init__(self, x, y, instance):
         super().__init__(x, y, instance)
@@ -750,3 +764,5 @@ class YellowItem(pygame.sprite.Sprite):
         if self.rect.y > screen_height:  
             self.kill()
             del self
+
+# class Totem(pygame.sprite.Sprite):

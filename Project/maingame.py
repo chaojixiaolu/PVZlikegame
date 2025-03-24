@@ -85,7 +85,6 @@ class maingame():
         self.all_sprites = pygame.sprite.Group()
         self.zombies = pygame.sprite.Group()
         self.plants = pygame.sprite.Group()
-        self.nuts = pygame.sprite.Group()
         self.yellow_items = pygame.sprite.Group()
         self.buttons = pygame.sprite.Group()
         self.errors = pygame.sprite.Group()
@@ -200,12 +199,6 @@ class maingame():
                                             plant.leveluptext = True  # レベルアップテキストを表示
                                             break  # それ以上の処理を避ける
 
-                                    for plant in self.nuts:
-                                        # マウスクリックがプラントに当たった場合
-                                        if plant.rect.collidepoint(event.pos):
-                                            plant.leveluptext = True  # レベルアップテキストを表示
-                                            break  # それ以上の処理を避ける       
-
                                         # もしクリックした位置に既存のプラントがない場合
                                     if self.sprite_positions.get(mouse_grid) is None and not self.plant_added:
                                         plant_class = globals().get(self.selected_plant)  # 選択されたプラントのクラスを取得
@@ -247,14 +240,12 @@ class maingame():
             if self.current_level > 5:
                 spawn_Zombie(self, "FastZombie")
 
-           
-            
             zombies_to_remove = [zombie for zombie in self.zombies if zombie.hp <= 0]
             for zombie in zombies_to_remove:
-                self.zombies.remove(zombie)
-                self.all_sprites.remove(zombie)
-                del zombie
-
+                    self.zombies.remove(zombie)
+                    zombie.drop_item()
+                    zombie.kill()  # ここで kill() を呼び出す
+                    del zombie
 
             screen.blit(self.background, (0,0))
             # screen.fill(BLACK)
@@ -272,7 +263,8 @@ class maingame():
                 draw_hp(screen, plant, GREEN)
             for zombie in self.zombies:
                 draw_hp(screen, zombie, RED)
-
+                draw_level(screen, zombie, RED)
+            
             # スコア表示
             score_text = self.font.render(f"Points: {self.points}", True, BLACK)
             screen.blit(score_text, (10, 120))
@@ -308,12 +300,6 @@ class maingame():
                     plant.show_levelup_text()
                     plant.leveluptext = False
                 drawattack(screen, plant)
-       
-            for plant in self.nuts:
-                if plant.leveluptext:
-                    plant.show_levelup_text()
-                    plant.leveluptext = False
-                drawattack(screen, plant)
 
             self.buttons.draw(screen)
             self.buttons.update()
@@ -322,35 +308,25 @@ class maingame():
                 error.draw()
 
             for plant in self.plants:  # 衝突処理(タネ、ゾンビ)
-                for pea in plant.peas:  # タネとゾンビ衝突
-                    collided_zombie = pygame.sprite.spritecollideany(pea, self.zombies)
-                    if collided_zombie:
-                        pea.collide(collided_zombie)
-                        collided_zombie.message_text = "Hit"
-                        if collided_zombie.hp <= 0:
-                            collided_zombie.kill()  # HPが0になったら削除
-                            del collided_zombie
+                if hasattr(plant, "shoot_pea"):
+                    for pea in plant.peas:  # タネとゾンビ衝突
+                        collided_zombie = pygame.sprite.spritecollideany(pea, self.zombies)
+                        if collided_zombie:
+                            pea.collide(collided_zombie)
 
             for plant in self.plants:  # 衝突処理(プラント, ゾンビ)
                 collided_zombie = pygame.sprite.spritecollideany(plant, self.zombies)
                 if collided_zombie:
-                    collided_zombie.damage_to_plant(plant)
+                    if hasattr(plant, "stop_zombie"):
+                        collided_zombie.collide_stop(plant)
+                    else:
+                        collided_zombie.damage_to_plant(plant)
                     collided_zombie.is_attacking = plant
-                    
-            for Nut in self.nuts:  # 衝突処理(rock、ゾンビ)
-                collided_zombie = pygame.sprite.spritecollideany(Nut, self.zombies)
-                if collided_zombie:
-                    collided_zombie.collide_stop(Nut)
-                    collided_zombie.is_attacking = Nut
 
             for trap in self.traps:  # トラッぷとゾンビ衝突
                     collided_zombie = pygame.sprite.spritecollideany(trap, self.zombies)
                     if collided_zombie:
                         trap.collide(collided_zombie)
-                        collided_zombie.message_text = "Hit"
-                        if collided_zombie.hp <= 0:
-                            collided_zombie.kill()  # HPが0になったら削除
-                            collided_zombie.kill()
              
             self.traps.update()
             self.all_sprites.update()
