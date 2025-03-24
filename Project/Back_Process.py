@@ -225,7 +225,7 @@ def drawart(screen, instance):
         else:
             print("No animation frames to draw!")
         instance.frame_count = (instance.frame_count + 1) % instance.frames
-    else:
+    elif instance.art:
         screen.blit(instance.image, instance.rect)
         screen.blit(instance.art, (instance.rect.x - instance.art_dif_x, instance.rect.y - instance.art_dif_y))
 
@@ -239,10 +239,14 @@ class DropItemText(pygame.sprite.Sprite):
         self.rect_x,  self.rect_y = pos
         self.alpha = 255  # 透明度
         self.life_time = 60  # 60フレーム（1秒）で消える
-        self.image = item_image_dict.get(f"{item_name}_image", None)  # アイテムの画像
-
         self.font = pygame.font.Font(None, 24)
-        self.text_image = self.font.render(f"x{number}", True, (255, 255, 255))  # "×1" のテキスト
+
+        if not item_name == "points":
+            self.image = item_image_dict.get(f"{item_name}_image", None)  # アイテムの画像
+            self.text_image = self.font.render(f"x{number}", True, (255, 255, 255))  # "×1" のテキスト
+        else:
+            self.text_image = self.font.render(f"points +{number}", True, (255, 255, 255))
+
 
     def update(self):
         """ アイテムを上に浮かせ、徐々に透明にする """
@@ -253,11 +257,12 @@ class DropItemText(pygame.sprite.Sprite):
 
     def draw(self, screen):
         """ 画面にアイテム画像とテキストを描画 """
-        if self.image:
-            image_copy = self.image.copy()
-            image_copy.set_alpha(self.alpha)  # 透明度を設定
-            screen.blit(image_copy, (self.rect_x, self.rect_y))
-        screen.blit(self.text_image, (self.rect_x + 40, self.rect_y + 20))
+        if not self.item_name == "points":
+            if self.image:
+                screen.blit(self.image, (self.rect_x, self.rect_y))
+            screen.blit(self.text_image, (self.rect_x + 40, self.rect_y + 20))
+        else: 
+            screen.blit(self.text_image, (self.rect_x , self.rect_y))
 
 #maingame処理
 

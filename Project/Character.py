@@ -51,7 +51,7 @@ class Plant(pygame.sprite.Sprite):
         self.image = pygame.Surface((80, 80), pygame.SRCALPHA)  # 透過サーフェス
         self.rect = self.image.get_rect()
         self.animation = False
-        self.attack_animation = True
+        self.attack_animation = False
         self.path = "Assets/Plant"
         load_animation_frames(self)
         self.rect.x = x
@@ -99,6 +99,9 @@ class Plant(pygame.sprite.Sprite):
         self.noLevelupButton(self, self.instance)
         self.Leveluptext(self)
         
+    def clicked(self):
+        self.leveluptext = True
+
     class LevelupButton(pygame.sprite.Sprite):
         def __init__(self, plant, instance):
             super().__init__()
@@ -314,6 +317,10 @@ class Rock(pygame.sprite.Sprite):
         self.noLevelupButton(self, self.instance)
         self.Leveluptext(self)
 
+    def clicked(self):
+        self.leveluptext = True
+
+
     class LevelupButton(pygame.sprite.Sprite):
         def __init__(self, plant, instance):
             super().__init__()
@@ -439,7 +446,10 @@ class Obsidian(Rock):
         self.is_attacking = zombie
         if self.hp <= 0:
             self.kill()
-          
+    
+    def clicked(self):
+        self.leveluptext = True
+
 class Fire(Plant):
     def __init__(self, x, y, instance):
         super().__init__(x, y, instance)
@@ -568,12 +578,18 @@ class Water(Plant):
 class Thunder(Plant):
     def __init__(self, x, y, instance):
         super().__init__(x, y, instance)
-        self.image.fill((255, 255, 0))  # 黄色
         self.attack_power = 30  # ダメージ量
         self.cost = 15
         self.attack_interval = 2500  # 1秒ごとに攻撃
         self.last_attack_time = pygame.time.get_ticks()
         self.name = "Thunder"
+
+        self.animation = True
+        self.path = "Assets/Thunder/Thunder"
+        self.frame_count = 0  
+        self.animation_frames = []  
+        self.frames = 50
+        load_animation_frames(self)
 
     def shoot_pea(self):
         pea = self.ThunderPea(self.rect.x + self.rect.width, self.rect.y + 20, self)
@@ -588,6 +604,13 @@ class Thunder(Plant):
             self.plant = plant
             self.instance = plant.instance
             self.hit_zombies = set()  # すでに当たったゾンビを記録するセット
+
+            self.animation = True
+            self.path = "Assets/ThunderPea/ThunderPea"
+            self.frame_count = 0  
+            self.animation_frames = []  
+            self.frames = 50
+            load_animation_frames(self)
 
         def update(self):
             self.rect.x += self.speed  # 弾を前進させる
@@ -633,6 +656,8 @@ class Thunder(Plant):
                             (start_enemy.rect.centerx, start_enemy.rect.centery), 
                             (end_enemy.rect.centerx, end_enemy.rect.centery), 3)
 
+#敵
+
 class Zombie(pygame.sprite.Sprite):
     def __init__(self, x, y, instance):
         super().__init__()
@@ -646,8 +671,8 @@ class Zombie(pygame.sprite.Sprite):
         self.speed = 1
         self.attack_interval = 1000
         self.attack = 35 + 10 * (self.level -1)
+        self.points = 10
         
-
         self.max_hp = 100 + 40 * (self.level -1) # 最大HP
         self.hp = self.max_hp  # 現在のHP
         self.hp_bar_width = 80  # HPバーの横幅
@@ -721,7 +746,7 @@ class Zombie(pygame.sprite.Sprite):
             self.last_attack_time[target] = self.current_time  # 次の攻撃時間を更新
     
     def drop_item(self):
-        self.instance.points += 10
+        self.instance.points += self.points
         self.drop_dict = {}
         self.drop_rand = random.randint(1, 100)
         if self.drop_rand <= 25:
@@ -732,12 +757,13 @@ class Zombie(pygame.sprite.Sprite):
             self.drop_dict["thunder element"] = 1
         
         i = 0
+        drop_item_text = DropItemText("points", self.points, (self.rect.x, self.rect.y+5), self.instance)
+        self.instance.texts.add(drop_item_text)
         for key, value in self.drop_dict.items(): #辞書にアイテムを追加
             self.instance.item[key] = self.instance.item.get(key, 0) + value
             drop_item_text = DropItemText(key, value, (self.rect.x, self.rect.y - (30 + i * 20)), self.instance)
             self.instance.texts.add(drop_item_text)
             i += 1
-
 
 class FastZombie(Zombie):
     def __init__(self, x, y, instance):
@@ -770,4 +796,59 @@ class YellowItem(pygame.sprite.Sprite):
             self.kill()
             del self
 
-# class Totem(pygame.sprite.Sprite):
+class Totem(pygame.sprite.Sprite):
+    def __init__(self, x, y, instance):
+        super().__init__()
+        self.instance = instance
+        self.image = pygame.Surface((80, 80), pygame.SRCALPHA)  # 透過サーフェス
+        self.fill(WHITE)
+        self.rect = self.image.get_rect()
+        self.product = None
+
+        self.max_hp = 100 + 40 * (self.level -1) # 最大HP
+        self.hp = self.max_hp  # 現在のHP
+        self.hp_bar_width = 80  # HPバーの横幅
+
+
+        self.process_rate = 0
+        self.last_produce_time = 0
+        self.process_time = 5000
+        self.process_bar_width = 80
+
+        self.instance.all_sprites.add(self)
+        self.instance.plants(self)
+
+        self.path = None
+        self.animation = False
+        self.attack_animation = False
+        
+    # def clicked(self):
+        
+
+    def update(self):
+        self.drop_dict = {self.product: 1}
+        self.process_rate = (self.instance.current_time - self.last_produce_time) * 100 / self.process_time
+        self.draw_process_bar()
+        if self.process_rate >= 100:
+            self.produce()
+            self.instance.current_time = self.last_produce_time
+            self.process_rate = 0
+    
+    def draw_process_bar(self):
+        bar_x = self.rect.x
+        bar_y = self.rect.y - 5  #トーテムの上に配置
+        process_width = int(self.process_bar_width * self.process_rate)  # HPバーの現在の長さ
+    
+        # HPバーの枠（黒）
+        pygame.draw.rect(screen, (0, 0, 0), (bar_x - 1, bar_y - 1, self.process_bar_width + 2, 6))
+        # HPバーの本体（黄）
+        pygame.draw.rect(screen, YELLOW, (bar_x, bar_y, process_width, 4))
+
+    def produce(self):
+        i = 0
+        for key, value in self.drop_dict.items(): #辞書にアイテムを追加
+            self.instance.item[key] = self.instance.item.get(key, 0) + value
+            drop_item_text = DropItemText(key, value, (self.rect.x, self.rect.y - (30 + i * 20)), self.instance)
+            self.instance.texts.add(drop_item_text)
+            i += 1
+            
