@@ -1,7 +1,6 @@
 import pygame
 import random
 from Back_Process import *
-import os
 import math
 
 pygame.init()
@@ -137,7 +136,7 @@ class Plant(pygame.sprite.Sprite):
                         del sprite
             else:
                     self.new_error = Error(self.screen, "You don't have enough points!")
-                    self.instance.errors.add(self.new_error)
+                    self.instance.texts.add(self.new_error)
         
         def update(self):
             if not self.plant.alive():  # 親が生存しているかチェック
@@ -352,7 +351,7 @@ class Rock(pygame.sprite.Sprite):
                         del sprite
             else:
                     self.new_error = Error(self.screen, "You don't have enough points!")
-                    self.instance.errors.add(self.new_error)
+                    self.instance.texts.add(self.new_error)
 
         def update(self):
             if not self.plant.alive():  # 親が生存しているかチェック
@@ -732,6 +731,12 @@ class Zombie(pygame.sprite.Sprite):
         elif self.drop_rand <= 75:
             self.drop_dict["thunder element"] = 1
         
+        i = 0
+        for key, value in self.drop_dict.items(): #辞書にアイテムを追加
+            self.instance.item[key] = self.instance.item.get(key, 0) + value
+            drop_item_text = DropItemText(key, value, (self.rect.x, self.rect.y - (30 + i * 20)), self.instance)
+            self.instance.texts.add(drop_item_text)
+            i += 1
 
 
 class FastZombie(Zombie):

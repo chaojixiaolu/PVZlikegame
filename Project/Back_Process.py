@@ -67,9 +67,11 @@ class Error(pygame.sprite.Sprite):
         if self.current_time > self.show_time + 1000:
             self.kill()
     
-    def draw(self):
+    def draw(self, screen):
         """ メッセージを画面に描画 """
-        self.screen.blit(self.text_message, self.rect)
+        screen.blit(self.text_message, self.rect)
+
+#ぼたん
 
 class Plantbutton(pygame.sprite.Sprite):
     def __init__(self, instance):
@@ -85,7 +87,7 @@ class Plantbutton(pygame.sprite.Sprite):
         self.draw()
 
     def draw(self):
-        self.cost = getattr(self.instance, f"{self.mode}_cost", None)
+        self.cost = globals().get(f"{self.mode}_cost")
         self.text = self.instance.font.render(f"{self.cost}", True, BLACK)
         self.text_rect = self.text.get_rect(center=(40,20))
         self.image.blit(self.text, self.text_rect)
@@ -147,6 +149,8 @@ class PauseButton(pygame.sprite.Sprite):
     def Process(self):
         self.instance.paused = not self.instance.paused  # 一時停止状態を切り替える
 
+#描写処理
+
 def draw_hp(screen, plant, Color):
         """HPバーをプラントの上に描画"""
         bar_x = plant.rect.x
@@ -159,7 +163,11 @@ def draw_hp(screen, plant, Color):
         pygame.draw.rect(screen, (0, 0, 0), (bar_x - 1, bar_y - 1, plant.hp_bar_width + 2, 6))
         # HPバーの本体（緑）
         pygame.draw.rect(screen, Color, (bar_x, bar_y, hp_width, 4))
-        
+
+def draw_level(screen, plant, Color):
+    text_image = plant.font.render(f"Level:{plant.level}", True, Color)  
+    screen.blit(text_image, (plant.rect.x, plant.rect.y - 25))
+
 def load_animation_frames(instance): # アニメーションフレームを読み込む
     if instance.animation:    
         for i in range(instance.frames):  
@@ -221,6 +229,38 @@ def drawart(screen, instance):
         screen.blit(instance.image, instance.rect)
         screen.blit(instance.art, (instance.rect.x - instance.art_dif_x, instance.rect.y - instance.art_dif_y))
 
+#Character処理
+
+class DropItemText(pygame.sprite.Sprite):
+    def __init__(self, item_name, number,  pos, instance):
+        super().__init__()
+        self.instance = instance
+        self.item_name = item_name  # ドロップしたアイテムの名前
+        self.rect_x,  self.rect_y = pos
+        self.alpha = 255  # 透明度
+        self.life_time = 60  # 60フレーム（1秒）で消える
+        self.image = item_image_dict.get(f"{item_name}_image", None)  # アイテムの画像
+
+        self.font = pygame.font.Font(None, 24)
+        self.text_image = self.font.render(f"x{number}", True, (255, 255, 255))  # "×1" のテキスト
+
+    def update(self):
+        """ アイテムを上に浮かせ、徐々に透明にする """
+        self.rect_y -= 1  # 1フレームごとに上へ移動
+        self.alpha -= 255 // self.life_time  # 徐々に透明にする
+        if self.alpha <= 0:
+            self.kill()  # 透明になったら削除
+
+    def draw(self, screen):
+        """ 画面にアイテム画像とテキストを描画 """
+        if self.image:
+            image_copy = self.image.copy()
+            image_copy.set_alpha(self.alpha)  # 透明度を設定
+            screen.blit(image_copy, (self.rect_x, self.rect_y))
+        screen.blit(self.text_image, (self.rect_x + 40, self.rect_y + 20))
+
+#maingame処理
+
 def spawn_Zombie(instance, kind):
     from Character import Zombie, FastZombie  # ここで遅延インポート
 
@@ -244,3 +284,14 @@ def spawn_Zombie(instance, kind):
         instance.all_sprites.add(zombie_new)
         instance.zombies.add(zombie_new)
         setattr(instance, f"{kind}_last_spawn_time", current_time)  # スポーン時間を更新
+
+item_image_dict = \
+    {"fire element_image": pygame.image.load("Assets/fire element.png"),  \
+    "water element_image": pygame.image.load("Assets/water element.png"),  \
+    "thunder element_image": pygame.image.load("Assets/thunder element.png")}
+
+Plant_cost = 10
+Rock_cost = 5
+Fire_cost = 20 ; Fire_item = {"fire element": 2}
+Water_cost = 15 ; Water_item = {"water element": 2}
+Thunder_cost = 15 ; Thunder_item = {"thunder element": 2}

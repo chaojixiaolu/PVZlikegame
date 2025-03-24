@@ -73,21 +73,16 @@ class maingame():
         self.last_levelup = pygame.time.get_ticks()  # 最後にレベルアップした時間を記録
 
 
-        self.points = 50  
-        self.Plant_cost = 10
-        self.Rock_cost = 5
-        self.Fire_cost = 20
-        self.Water_cost = 15
-        self.Thunder_cost = 15
+        self.points = 50
 
-       
+        self.item = {}
 
         self.all_sprites = pygame.sprite.Group()
         self.zombies = pygame.sprite.Group()
         self.plants = pygame.sprite.Group()
         self.yellow_items = pygame.sprite.Group()
         self.buttons = pygame.sprite.Group()
-        self.errors = pygame.sprite.Group()
+        self.texts = pygame.sprite.Group()
         self.traps = pygame.sprite.Group()
 
         self.plant = Plant(GRID_CENTER[2][1][0], GRID_CENTER[2][1][1], self)
@@ -106,6 +101,7 @@ class maingame():
         Firebutton(self)
         Waterbutton(self)
         Thunderbutton(self)
+
 
         
         while running:
@@ -201,19 +197,8 @@ class maingame():
 
                                         # もしクリックした位置に既存のプラントがない場合
                                     if self.sprite_positions.get(mouse_grid) is None and not self.plant_added:
-                                        plant_class = globals().get(self.selected_plant)  # 選択されたプラントのクラスを取得
-                                        plant_cost = getattr(self, f"{self.selected_plant}_cost", None)  # コストを取得
+                                        self.add_plant(mouse_grid[0], mouse_grid[1])
 
-                                        if plant_class and plant_cost is not None and self.points >= plant_cost:
-                                            self.points -= plant_cost  # ポイントを減算
-                                            plant_class(mouse_grid[0], mouse_grid[1], self)  # インスタンス作成
-                                            self.plant_added = True  # プラントが追加されたフラグ
-
-
-                                        # ポイントが足りない場合、エラーメッセージを表示
-                                        elif not self.plant_added:
-                                            self.error = Error(screen, "You don't have enough points!")
-                                            self.errors.add(self.error)
                                 else:
                                     break  # mouse_gridがNoneの場合は何もしない
 
@@ -252,6 +237,8 @@ class maingame():
             # bg_surface = draw_background()
             # screen.blit(bg_surface, (0, 0))
 
+            # draw系
+
             for trap in self.traps:
                 drawart(screen, trap)
             self.all_sprites.draw(screen)
@@ -266,11 +253,11 @@ class maingame():
                 draw_level(screen, zombie, RED)
             
             # スコア表示
-            score_text = self.font.render(f"Points: {self.points}", True, BLACK)
+            score_text = self.font.render(f"Points: {self.points}", True, WHITE)
             screen.blit(score_text, (10, 120))
             
             # モード表示
-            mode_text = self.font.render(f"Mode: {self.selected_plant}", True, BLACK)
+            mode_text = self.font.render(f"Mode: {self.selected_plant}", True, WHITE)
             screen.blit(mode_text, (screen_width - 200, screen_height - 40))
 
             # **時間の表示**
@@ -283,10 +270,18 @@ class maingame():
             screen.blit(count_text, (10, 150))
 
             """現在のレベルを表示"""
-            # 画面を黒で塗りつぶし
-            level_text = self.font.render(f"Level: {self.current_level}", True, BLACK)
+            level_text = self.font.render(f"Level: {self.current_level}", True, WHITE)
             screen.blit(level_text, (10, screen_height -50 ))
 
+            #アイテム表示
+            i = 0
+            for item, value in self.item.items():
+                if item:
+                    item_image_path = item_image_dict.get(item + "_image")
+                    screen.blit(item_image_path, (120 + i * 60, 510))
+                    item_text = self.font.render(f"×{value}", True, WHITE)
+                    screen.blit(item_text, (160 + i * 60, 530))
+                    i += 1
 
             for zombie in self.zombies:
                 zombie.message(screen)
@@ -304,8 +299,8 @@ class maingame():
             self.buttons.draw(screen)
             self.buttons.update()
             self.traps.draw(screen)
-            for error in self.errors:
-                error.draw()
+            for text in self.texts:
+                text.draw(screen)
 
             for plant in self.plants:  # 衝突処理(タネ、ゾンビ)
                 if hasattr(plant, "shoot_pea"):
@@ -330,7 +325,7 @@ class maingame():
              
             self.traps.update()
             self.all_sprites.update()
-            self.errors.update()
+            self.texts.update()
             
             pygame.display.flip()
 
@@ -339,6 +334,38 @@ class maingame():
             # objgraph.show_growth()
             
         self.game_over_screen()  # ゲームオーバー画面を表示
+    
+
+    def add_plant(self, pos_x, pos_y):
+        plant_class = globals().get(self.selected_plant)  # 選択されたプラントのクラスを取得
+        plant_cost = globals().get(f"{self.selected_plant}_cost", None)  # コストを取得
+        plant_items = globals().get(f"{self.selected_plant}_item", {})  # 必要なアイテムの辞書を取得（なければ空辞書）
+
+        # ポイントとアイテムのチェック
+        if plant_class and plant_cost is not None:
+            if self.points < plant_cost:
+                error_text = Error(screen, "You don't have enough points")
+                self.texts.add(error_text)
+                return
+            
+            # アイテム不足をチェック
+            for item, required_amount in plant_items.items():
+                if self.item.get(item, 0) < required_amount:
+                    error_text = Error(screen, f"You don't have enough {item}")
+                    self.texts.add(error_text)
+                    return
+            
+            # ポイントを減算
+            self.points -= plant_cost
+
+            # アイテムを消費
+            for item, required_amount in plant_items.items():
+                self.item[item] -= required_amount
+
+            # プラントを追加
+            plant_class(pos_x, pos_y, self)
+            self.plant_added = True  # プラントが追加されたフラグ
+            
 
     def game_over_screen(self):
         """ゲームオーバー画面の描画"""
