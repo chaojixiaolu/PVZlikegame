@@ -67,6 +67,11 @@ class maingame():
         self.level_up_time = 20000  # 3秒ごとにレベルアップ (ミリ秒単位)
         self.last_levelup = pygame.time.get_ticks()  # 最後にレベルアップした時間を記録
 
+        self.pause_start_time = 0
+        self.zoom_start_time = 0
+        self.paused_duration = 0
+        self.zoom_duration = 0
+
         self.zooming = False
         self.zooming_in = False
         self.zooming_out = False
@@ -109,7 +114,7 @@ class maingame():
         
         while running:
             mouse_x, mouse_y = pygame.mouse.get_pos()
-            self.current_time = pygame.time.get_ticks()
+            self.current_time = pygame.time.get_ticks() - self.paused_duration - self.zoom_duration
 
              # **ゲームオーバーならループを抜ける**
             if self.deadcount > self.deadline:
@@ -236,7 +241,7 @@ class maingame():
             screen.blit(mode_text, (screen_width - 200, screen_height - 40))
 
             # **時間の表示**
-            elapsed_time = (pygame.time.get_ticks() - self.start_time) // 1000  # ミリ秒 → 秒
+            elapsed_time = (self.current_time - self.start_time) // 1000  # ミリ秒 → 秒
             time_text = self.font.render(f"Time: {elapsed_time} s", True, WHITE)  # 黒色
             screen.blit(time_text, (screen_width - 150, 120))  # 右上に表示
 
@@ -343,50 +348,64 @@ class maingame():
             
     def pause_screen(self):
     # **ゲームの最新フレームを保持（再描画しない）**
-                pause_overlay = screen.copy()  # 現在の画面を保存
-                overlay = pygame.Surface((screen_width, screen_height), pygame.SRCALPHA)
-                overlay.fill((0, 0, 0, 50))  # 半透明の黒を適用
+        self.pause_start_time = pygame.time.get_ticks()  # 一時停止開始時間を記録
+        clock = pygame.time.Clock()
+        pause_overlay = screen.copy()  # 現在の画面を保存
+        overlay = pygame.Surface((screen_width, screen_height), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 50))  # 半透明の黒を適用
 
-                pause_overlay.blit(overlay, (0, 0))  # 半透明の黒を合成
-                screen.blit(pause_overlay, (0, 0))  # 画面に描画
+        pause_overlay.blit(overlay, (0, 0))  # 半透明の黒を合成
+        screen.blit(pause_overlay, (0, 0))  # 画面に描画
 
-                while self.paused:
+        while self.paused:
 
-                    pause_text = self.font.render("Paused", True, (255, 255, 255))
-                    screen.blit(pause_text, (screen_width // 2 - 40, screen_height // 2))
+            pause_text = self.font.render("Paused", True, (255, 255, 255))
+            screen.blit(pause_text, (screen_width // 2 - 40, screen_height // 2))
 
-                    self.buttons.draw(screen)  # ボタンを表示
+            self.buttons.draw(screen)  # ボタンを表示
                     
-                    pygame.display.update()  # 画面を更新
+            pygame.display.update()  # 画面を更新
 
-                    button_clicked = False  # ボタンが押されたかどうかのフラグ
+            button_clicked = False  # ボタンが押されたかどうかのフラグ
 
-                    for event in pygame.event.get():
-                        if event.type == pygame.QUIT:
-                            pygame.quit()
-                            exit()
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                        pygame.quit()
+                        exit()
                         
-                        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                            for button in self.buttons:
-                                if button.rect.collidepoint(event.pos):
-                                    button.Process()
-                                    button_clicked = True  # ボタンが押されたらフラグを変更
-                                    break  # ボタンが押されたらループを抜ける
-                            
-                            if not button_clicked:
-                                self.paused = False  # どのボタンも押されなかったらゲームを再開
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                                for button in self.buttons:
+                                    if button.rect.collidepoint(event.pos):
+                                        button.Process()
+                                        button_clicked = True  # ボタンが押されたらフラグを変更
+                                        break  # ボタンが押されたらループを抜ける
+                                
+                                if not button_clicked:
+                                    self.paused = False  # どのボタンも押されなかったらゲームを再開
+                clock.tick(30)
+            
+        self.paused_duration += pygame.time.get_ticks() - self.pause_start_time
 
     def zoom_screen(self):
+        self.zoom_start_time = pygame.time.get_ticks()
+        clock = pygame.time.Clock()  # ループの外で定義
         screen_overlay = screen.copy()  # 現在の画面を保存
         back_image = pygame.image.load("Assets/Back.png")
-        screen.blit(back_image, (-350,-450))
+
+        zoom_image = []
+        for i in range(45):
+            zoom_path = pygame.image.load(f"Assets/ZoomScreen/ZoomScreen_{i:05}.png")
+            zoom_image.append(zoom_path)
+        self.zoom_frame = 0
+
+        screen.blit(back_image, (-350, -450))
 
         # **オフセットの初期化**
         init_dif_x, init_dif_y = 0, 0  
 
         while self.zooming:
-            step = 0.02  # 1回のズーム変化量（0.02ずつ拡大/縮小）
-            
+            step = 0.08  # 1回のズーム変化量（0.08ずつ拡大/縮小）
+
             # **プラントを中心にズームする**
             plant_x, plant_y = self.zoom_to.rect.center
 
@@ -409,37 +428,79 @@ class maingame():
                     self.zooming_in = False
                     self.zooming_out = False
 
-            elif self.zooming_out:
-                self.zoom_factor -= step
-                if self.zoom_factor <= 1.0:
-                    self.zoom_factor = 1.0
-                    self.zooming_out = False
-                    break
-
             # **画面全体をズーム**
             zoomed_surface = pygame.transform.scale(screen_overlay, (zoomed_width, zoomed_height))
 
             # **ズームした画面をオフセットで描画**
-            screen.blit(back_image, (-100-zoom_dif_x + init_dif_x, -450-zoom_dif_y + init_dif_y))
+            screen.blit(back_image, (-100 - zoom_dif_x + init_dif_x, -450 - zoom_dif_y + init_dif_y))
             screen.blit(zoomed_surface, (-zoom_dif_x + init_dif_x, -zoom_dif_y + init_dif_y))
-            
+
+            path = zoom_image[self.zoom_frame]
+            screen.blit(path, (0, 0))
+
+            # **フレームの進行**
+            if not self.zooming_out:
+                self.zoom_frame = min(self.zoom_frame + 1, 15)
+            else:
+                break  # ズームアウトの処理へ移行
+
             # **イベント処理**
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.start_zoom_out()
-                    self.zoom_factor = 1.0
 
             pygame.display.flip()
+            clock.tick(30)
 
+        # **ズームアウトの処理**
+        while self.zooming_out:
+            step = 0.08
+            self.zoom_factor -= step
+
+            # **オフセットをスムーズに戻す**
+            init_dif_x -= init_dif_x * step
+            init_dif_y -= init_dif_y * step
+
+            # **ズームが完了したらループを抜ける**
+            if self.zoom_factor <= 1.0:
+                self.zoom_factor = 1.0
+                self.zooming_out = False
+                break
+
+            # **ズームアウト時のアニメーション**
+            self.zoom_frame = min(self.zoom_frame + 1, 44)
+
+            # **ズームアウト時の描画**
+            zoomed_width = int(screen_width * self.zoom_factor)
+            zoomed_height = int(screen_height * self.zoom_factor)
+            zoom_dif_x = (plant_x * self.zoom_factor - plant_x)
+            zoom_dif_y = (plant_y * self.zoom_factor - plant_y)
+            zoomed_surface = pygame.transform.scale(screen_overlay, (zoomed_width, zoomed_height))
+            init_dif_x *= (1 - step)  # 徐々にゼロに戻す
+            init_dif_y *= (1 - step)  # 徐々にゼロに戻す
+
+            screen.blit(back_image, (-100 - zoom_dif_x + init_dif_x, -450 - zoom_dif_y + init_dif_y))
+            screen.blit(zoomed_surface, (-zoom_dif_x + init_dif_x, -zoom_dif_y + init_dif_y))
+
+            path = zoom_image[self.zoom_frame]
+            screen.blit(path, (0, 0))
+
+            pygame.display.flip()
+            clock.tick(30)
+        
+        self.zoom_duration += pygame.time.get_ticks() - self.zoom_start_time
 
     def start_zoom_in(self, plant):
         self.zoom_to = plant
         self.zooming = True
         self.zooming_in = True
+        self.zooming_out = False  # **ズームアウトのフラグをリセット**
 
     def start_zoom_out(self):
         self.zooming_out = True
-        self.zooming = False
+        self.zooming = False  # **ズームインを停止**
+        self.zoom_frame = 30  # **ズームアウト用のアニメーションフレーム設定**
+
 
     def game_over_screen(self):
         """ゲームオーバー画面の描画"""
