@@ -79,7 +79,9 @@ class maingame():
         self.zooming_out = False
         self.zoom_factor = 1.0
         self.zoom_target = 2.0  # 2倍ズーム
+        self.zoom_mode = "levelup"
         self.zoom_to = None
+        self.totem_choiced = "Fire"
 
         self.points = 50
 
@@ -97,6 +99,8 @@ class maingame():
         self.plant = Plant(GRID_CENTER[2][1][0], GRID_CENTER[2][1][1], self)
         self.all_sprites.add(self.plant)
         self.plants.add(self.plant)
+
+        TotemInit(GRID_CENTER[0][1][0], GRID_CENTER[0][1][1], self)
 
         self.zombie = Zombie(screen_width, GRID_CENTER[0][random.randint(0, GRID_V_Number-1)][1], self)
         self.all_sprites.add(self.zombie)
@@ -173,7 +177,6 @@ class maingame():
                                         # マウスクリックがプラントに当たった場合
                                         if plant.rect.collidepoint(event.pos):
                                             plant.clicked()
-                                            self.start_zoom_in(plant)
                                             break  # それ以上の処理を避ける
 
                                         # もしクリックした位置に既存のプラントがない場合
@@ -389,7 +392,10 @@ class maingame():
         # **オフセットの初期化**
         init_dif_x, init_dif_y = 0, 0
 
-        self.plant_levelup()
+        if self.zoom_mode == "levelup":
+            self.plant_levelup()
+        elif self.zoom_mode == "Totem":
+            self.totem_choice()
 
         while self.zooming:
             step = 0.08  # 1回のズーム変化量（0.08ずつ拡大/縮小）
@@ -451,30 +457,10 @@ class maingame():
 
                                 break  # クリック処理をボタンで完了するためにループを抜ける
             
-            text = self.font.render(f"{self.zoom_to.name}", True, WHITE)
-            screen.blit(text, (610, 30))
-            screen.blit(art_dict[self.zoom_to.name].image[0], (400, -150))
-            screen.blit(self.arrow_image, (630, 130))
-            text = self.font.render(f"{self.upper_class_name}", True, WHITE)
-            screen.blit(text, (610, 210))
-            screen.blit(art_dict[self.upper_class_name].image[0], (400, 30))
-
-            text = self.font_small.render("Level Up", True, WHITE)
-            screen.blit(text, (620, 340))
-            text = self.font_small.render("Requirements", True, WHITE)
-            screen.blit(text, (600, 360))
-            
-            self.plant_cost = plant_data[self.zoom_to.upper_plant]["cost"]
-            self.plant_items = plant_data[self.zoom_to.upper_plant]["item"]
-
-            i = 0
-            text_item((600, 390), "points", self.points, self.plant_cost, self, self.font_small)
-            for key, value in self.plant_items.items(): #辞書にアイテムを追加
-                text_item((610, 410 + i * 20), key, self.item[key], value, self, self.font_small)
-                i += 1    
-
-            text = self.font_small.render("Level Up?", True, WHITE)
-            screen.blit(text, (455, 450))
+            if self.zoom_mode == "levelup":
+                self.levelup_screen()
+            elif self.zoom_mode == "Totem":
+                self.totem_screen()
 
             #名前表示
             self.big_font = pygame.font.SysFont(None, 100)
@@ -482,6 +468,7 @@ class maingame():
             screen.blit(text, (10, 400))
 
             self.zoom_buttons.draw(screen)
+            self.zoom_buttons.update()
             for text in self.texts:
                 text.draw(screen)
 
@@ -526,6 +513,51 @@ class maingame():
         
         self.zoom_duration += pygame.time.get_ticks() - self.zoom_start_time
 
+    def levelup_screen(self):
+            text = self.font.render(f"{self.zoom_to.name}", True, WHITE)
+            screen.blit(text, (610, 30))
+            screen.blit(art_dict[self.zoom_to.name].image[0], (400, -150))
+            screen.blit(self.arrow_image, (630, 130))
+            text = self.font.render(f"{self.upper_class_name}", True, WHITE)
+            screen.blit(text, (610, 210))
+            screen.blit(art_dict[self.upper_class_name].image[0], (400, 30))
+
+            text = self.font_small.render("Level Up", True, WHITE)
+            screen.blit(text, (620, 340))
+            text = self.font_small.render("Requirements", True, WHITE)
+            screen.blit(text, (600, 360))
+            
+            self.plant_cost = plant_data[self.zoom_to.upper_plant]["cost"]
+            self.plant_items = plant_data[self.zoom_to.upper_plant]["item"]
+
+            i = 0
+            text_item((600, 390), "points", self.points, self.plant_cost, self, self.font_small)
+            for key, value in self.plant_items.items(): #辞書にアイテムを追加
+                text_item((610, 410 + i * 20), key, self.item[key], value, self, self.font_small)
+                i += 1    
+
+            text = self.font_small.render("Level Up?", True, WHITE)
+            screen.blit(text, (455, 450))
+
+    def totem_screen(self): 
+        text = self.font.render(f"{self.zoom_to.name}", True, WHITE)
+        screen.blit(text, (610, 30))
+        screen.blit(art_dict[self.zoom_to.name].image[0], (400, -150))
+        
+
+    def totem_choice(self):
+        new_button = ChoiceButton(self.zoom_to, self)
+        self.zoom_buttons.add(new_button)
+        new_button = noChoiceButton(self.zoom_to, self)
+        self.zoom_buttons.add(new_button)
+
+        new_button = FireChoice(self)
+        self.zoom_buttons.add(new_button)
+        new_button = WaterChoice(self)
+        self.zoom_buttons.add(new_button)
+        new_button = ThunderChoice(self)
+        self.zoom_buttons.add(new_button)
+
     def plant_levelup(self):
 
         self.upper_class = globals().get(self.zoom_to.upper_plant)
@@ -538,16 +570,19 @@ class maingame():
         new_button = noLevelupButton(self.zoom_to, self)
         self.zoom_buttons.add(new_button)
 
-    def start_zoom_in(self, plant):
+    def start_zoom_in(self, plant, mode):
         self.zoom_to = plant
         self.zooming = True
         self.zooming_in = True
         self.zooming_out = False  # **ズームアウトのフラグをリセット**
+        self.zoom_mode = mode
 
     def start_zoom_out(self):
         self.zooming_out = True
         self.zooming = False  # **ズームインを停止**
         self.zoom_frame = 30  # **ズームアウト用のアニメーションフレーム設定**
+        for i in self.zoom_buttons:
+            i.kill()
 
     def game_over_screen(self):
         """ゲームオーバー画面の描画"""

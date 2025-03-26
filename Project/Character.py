@@ -98,7 +98,7 @@ class Plant(pygame.sprite.Sprite):
         self.instance.all_sprites.add(pea)
 
     def clicked(self):
-        self.leveluptext = True
+        self.instance.start_zoom_in(self, "levelup")
 
     class Pea(pygame.sprite.Sprite):
         def __init__(self, x, y):
@@ -214,7 +214,7 @@ class Rock(pygame.sprite.Sprite):
             self.kill()
 
     def clicked(self):
-        self.leveluptext = True
+        self.insatnce.start_zoom_in(self, "levelup")
    
 class Obsidian(Rock):
     def __init__(self, x, y, instance):
@@ -563,16 +563,19 @@ class YellowItem(pygame.sprite.Sprite):
             self.kill()
             del self
 
-class Totem(pygame.sprite.Sprite):
+class TotemInit(pygame.sprite.Sprite):
     def __init__(self, x, y, instance):
         super().__init__()
+        self.color = WHITE
         self.instance = instance
+        self.name = "TotemInit"
         self.image = pygame.Surface((80, 80), pygame.SRCALPHA)  # 透過サーフェス
-        self.fill(WHITE)
         self.rect = self.image.get_rect()
+        self.rect.topleft = (x, y)
         self.product = None
+        self.value = 1
 
-        self.max_hp = 100 + 40 * (self.level -1) # 最大HP
+        self.max_hp = 100
         self.hp = self.max_hp  # 現在のHP
         self.hp_bar_width = 80  # HPバーの横幅
 
@@ -583,39 +586,65 @@ class Totem(pygame.sprite.Sprite):
         self.process_bar_width = 80
 
         self.instance.all_sprites.add(self)
-        self.instance.plants(self)
+        self.instance.plants.add(self)
 
-        self.path = None
         self.animation = False
         self.attack_animation = False
+        self.art_count = 0
         
-    # def clicked(self):
-        
+    def clicked(self):
+        self.instance.start_zoom_in(self, "Totem")
 
     def update(self):
-        self.drop_dict = {self.product: 1}
+        self.drop_dict = {self.product: self.value}
         self.process_rate = (self.instance.current_time - self.last_produce_time) * 100 / self.process_time
         self.draw_process_bar()
         if self.process_rate >= 100:
             self.produce()
-            self.instance.current_time = self.last_produce_time
+            self.last_produce_time = self.instance.current_time
             self.process_rate = 0
     
     def draw_process_bar(self):
-        bar_x = self.rect.x
-        bar_y = self.rect.y - 5  #トーテムの上に配置
-        process_width = int(self.process_bar_width * self.process_rate)  # HPバーの現在の長さ
-    
-        # HPバーの枠（黒）
-        pygame.draw.rect(screen, (0, 0, 0), (bar_x - 1, bar_y - 1, self.process_bar_width + 2, 6))
-        # HPバーの本体（黄）
-        pygame.draw.rect(screen, YELLOW, (bar_x, bar_y, process_width, 4))
+        if self.product:
+            bar_x = self.rect.x
+            bar_y = self.rect.y - 5  #トーテムの上に配置
+            process_width = int(self.process_bar_width * self.process_rate / 100)  # HPバーの現在の長さ
+        
+            # HPバーの枠（黒）
+            pygame.draw.rect(screen, (0, 0, 0), (bar_x - 1, bar_y - 1, self.process_bar_width + 2, 6))
+            # HPバーの本体（黄）
+            pygame.draw.rect(screen, YELLOW, (bar_x, bar_y, process_width, 4))
 
     def produce(self):
-        i = 0
-        for key, value in self.drop_dict.items(): #辞書にアイテムを追加
-            self.instance.item[key] = self.instance.item.get(key, 0) + value
-            drop_item_text = DropItemText(key, value, (self.rect.x, self.rect.y - (30 + i * 20)), self.instance)
-            self.instance.texts.add(drop_item_text)
-            i += 1
+        if self.product:
+            i = 0
+            for key, value in self.drop_dict.items(): #辞書にアイテムを追加
+                self.instance.item[key] = self.instance.item.get(key, 0) + value
+                drop_item_text = DropItemText(key, value, (self.rect.x, self.rect.y - (30 + i * 20)), self.instance)
+                self.instance.texts.add(drop_item_text)
+                i += 1
+        
+class TotemFire(TotemInit):
+    def __init__(self, x, y, instance):
+        super().__init__(x, y, instance)
+        self.name = "TotemFire"
+        self.product = "fire element"
+        
+        self.animation = True
+        
+class TotemWater(TotemInit):
+    def __init__(self, x, y, instance):
+        super().__init__(x, y, instance)
+        self.name = "TotemWater"
+        self.product = "water element"
 
+        self.animation = True
+        
+class TotemThunder(TotemInit):
+    def __init__(self, x, y, instance):
+        super().__init__(x, y, instance)
+        self.name = "TotemThunder"
+        self.product = "thunder element"
+
+        self.animation = True
+       

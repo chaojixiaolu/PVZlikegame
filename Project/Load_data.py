@@ -42,7 +42,9 @@ art_dict = {"Plant": LoadedImage(False, "Assets/Plant", 1, PLANT), "Pea": Loaded
             "Water": LoadedImage(True, "Assets/Water/Water", 50, PLANT), "WaterPea": LoadedImage(True, "Assets/WaterPea/WaterPea", 30, PEA), \
             "Thunder": LoadedImage(True, "Assets/Thunder/Thunder", 50, PLANT), "ThunderPea": LoadedImage(True, "Assets/ThunderPea/ThunderPea", 50, PEA), \
             "Zombie": LoadedImage(False, "Assets/Zombie", 1, PLANT), "ZombieAttack": LoadedImage(True, "Assets/ZombieAttack/ZombieAttack", 30, PEA), \
-            "YellowItem": LoadedImage(True, "Assets/YellowItem/YellowItem", 50, (20, 20))}
+            "YellowItem": LoadedImage(True, "Assets/YellowItem/YellowItem", 50, (20, 20)), \
+            "TotemInit": LoadedImage(False, "Assets/TotemInit", 1, PLANT), \
+            "TotemFire": LoadedImage(True, "Assets/TotemFire/TotemFire", 60, PLANT), "TotemWater": LoadedImage(True, "Assets/TotemWater/TotemWater", 60, PLANT), "TotemThunder": LoadedImage(True, "Assets/TotemThunder/TotemThunder", 60, PLANT),}
 
 plant_data = {
     "Plant": {"cost": 10, "item": {}},
@@ -51,7 +53,9 @@ plant_data = {
     "Obsidian": {"cost": 30, "item": {}},
     "Fire": {"cost": 20, "item": {"fire element": 2}},
     "Water": {"cost": 15, "item": {"water element": 2}},
-    "Thunder": {"cost": 15, "item": {"thunder element": 2}}
-}
+    "Thunder": {"cost": 15, "item": {"thunder element": 2}},
+    "TotemFire": {"cost":0, "item": {"fire element": 0}}, 
+    "TotemWater": {"cost":0, "item": {"water element": 0}}, 
+    "TotemThunder": {"cost":0, "item": {"thunder element": 0}}, }
 
 

@@ -200,7 +200,7 @@ class LevelupButton(pygame.sprite.Sprite):
                 self.instance.start_zoom_out()
 
                 # **ズームアウト開始後にスプライトを削除**
-                for sprite in list(self.plant.button_sprites):  # 明示的にリスト化
+                for sprite in list(self.plant.button_sprites): 
                     sprite.kill()
                     del sprite
 
@@ -222,7 +222,7 @@ class noLevelupButton(pygame.sprite.Sprite):
             
             
             def Process(self):
-                self.plant.leveluptext = False
+                pass
 
                 # **ズームアウトを開始**
                 self.instance.start_zoom_out()
@@ -236,7 +236,128 @@ class noLevelupButton(pygame.sprite.Sprite):
             def update(self):
                 if not self.plant.alive():  # 親が生存しているかチェック
                     self.kill()  # 自分も削除
-                      
+
+class ChoiceButton(pygame.sprite.Sprite):
+    def __init__(self, plant, instance):
+            super().__init__()
+            self.rect = pygame.Rect(455 ,475, 90, 45)
+            self.image = pygame.Surface((self.rect.width, self.rect.height), pygame.SRCALPHA)  # 透明対応
+            self.plant = plant
+
+            self.screen = plant.screen
+            self.instance = instance
+            
+            
+    def update(self):
+        if not self.plant.alive():  # 親が生存しているかチェック
+                self.kill()  # 自分も削除
+
+    def Process(self):
+            self.choice = self.instance.totem_choiced
+            self.pos = self.plant.rect.topleft
+            self.cost = plant_data[f"Totem{self.choice}"]["cost"]
+            self.item = plant_data[f"Totem{self.choice}"]["item"]
+            print(self.choice)
+            if item_consume(self.cost, self.item, self.instance):
+                self.plant.kill()
+                from Character import TotemFire
+                from Character import TotemWater
+                from Character import TotemThunder
+                if self.choice == "Fire":
+                    classi = TotemFire
+                elif self.choice == "Water":
+                    classi = TotemWater
+                elif self.choice == "Thunder":
+                    classi = TotemThunder
+                # classi = globals().get(f"Totem{self.choice}")
+                new = classi(self.pos[0], self.pos[1], self.instance)
+                self.instance.plants.add(new)
+                self.instance.all_sprites.add(new)
+                self.instance.start_zoom_out()
+                self.plant.kill()
+                
+class noChoiceButton(pygame.sprite.Sprite):
+            def __init__(self, plant, instance):
+                super().__init__()
+                self.rect = pygame.Rect(550, 475, 200, 45)
+                self.image = pygame.Surface((self.rect.width, self.rect.height), pygame.SRCALPHA)  # 透明対応
+                self.plant = plant
+                self.screen = plant.screen
+                self.instance = instance
+            
+            
+            def Process(self):
+                # **ズームアウトを開始**
+                self.instance.start_zoom_out()
+
+                
+
+
+            def update(self):
+                if not self.plant.alive():  # 親が生存しているかチェック
+                    self.kill()  # 自分も削除
+
+class FireChoice(pygame.sprite.Sprite):
+    def __init__(self, instance):
+        super().__init__()
+        self.instance = instance
+        self.rect = pygame.Rect(550 ,150, 230, 30)
+        self.image = pygame.Surface((self.rect.width, self.rect.height), pygame.SRCALPHA)  # 透明対応
+        self.selected = True
+        self.mode = "Fire"
+        self.cost = plant_data[f"Totem{self.mode}"]["cost"]
+        self.item = plant_data[f"Totem{self.mode}"]["item"]
+        self.color = RED
+
+        self.instance.zoom_buttons.add(self)
+
+    def draw(self):
+        text = FONT.render(self.mode, True, self.color)
+        self.instance.screen.blit(text, (self.rect.x - 100, self.rect.y))
+        if self.selected:
+            pygame.draw.rect(self.instance.screen, WHITE, self.rect)
+            text_color = BLACK
+        else:
+            pygame.draw.rect(self.instance.screen, WHITE, self.rect, width=3)
+            text_color = WHITE
+        text_item((self.rect.x + 10, self.rect.y), "points", self.instance.points, self.cost, self.instance, FONT_small, initcolor=text_color)
+        i = 0
+        for key, value in self.item.items():
+            text_item((self.rect.x + 120 + i * 40, self.rect.y), key, self.instance.item[key], value, self.instance, FONT_small)
+            i += 1
+
+    def Process(self):
+        self.instance.totem_choiced = self.mode
+        self.selected = True
+
+    def update(self):
+        self.draw()
+        if self.instance.totem_choiced == self.mode:
+            self.selected = True
+        else:
+            self.selected = False
+
+class WaterChoice(FireChoice):
+    def __init__(self, instance):
+        super().__init__(instance)
+        self.rect = pygame.Rect(550 ,200, 230, 30)
+        self.image = pygame.Surface((self.rect.width, self.rect.height), pygame.SRCALPHA)  # 透明対応
+        self.selected = True
+        self.mode = "Water"
+        self.cost = plant_data[f"Totem{self.mode}"]["cost"]
+        self.item = plant_data[f"Totem{self.mode}"]["item"]
+        self.color = BLUE
+
+class ThunderChoice(FireChoice):
+        def __init__(self, instance):
+            super().__init__(instance)
+            self.rect = pygame.Rect(550 ,250, 230, 30)
+            self.image = pygame.Surface((self.rect.width, self.rect.height), pygame.SRCALPHA)  # 透明対応
+            self.selected = True
+            self.mode = "Thunder"
+            self.cost = plant_data[f"Totem{self.mode}"]["cost"]
+            self.item = plant_data[f"Totem{self.mode}"]["item"]
+            self.color = YELLOW
 #描写処理
 
 def draw_hp(screen, plant, Color):
@@ -332,10 +453,13 @@ def spawn_Zombie(instance, kind):
         instance.zombies.add(zombie_new)
         setattr(instance, f"{kind}_last_spawn_time", current_time)  # スポーン時間を更新
 
-def text_item(pos, item, limit, require, instance, font, point_text="points", dif=60):
+def text_item(pos, item, limit, require, instance, font, point_text="points", dif=60, initcolor=WHITE):
     pos_x, pos_y = pos
+    image_dif = 0
+    if font == FONT_small:
+        image_dif = 10
     if limit >= require:
-        color = WHITE
+        color = initcolor
     else:
         color = RED
     if item == "points":
@@ -343,7 +467,7 @@ def text_item(pos, item, limit, require, instance, font, point_text="points", di
         instance.screen.blit(text, (pos_x, pos_y))
     else:
         image = item_image_dict[f"{item}_image"]
-        instance.screen.blit(image, (pos_x, pos_y-20))
+        instance.screen.blit(image, (pos_x + image_dif, pos_y-18))
     pos_x, pos_y = pos
     text = font.render(f":{limit}/{require}", True, color)
     instance.screen.blit(text, (pos_x + dif, pos_y))    
