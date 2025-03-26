@@ -2,6 +2,7 @@ import pygame
 import random
 from Back_Process import *
 import math
+from Load_image import *
 
 pygame.init()
 
@@ -20,6 +21,7 @@ ORANGE = (255, 165, 0)
 LIGHTBLUE = (173, 216, 230)
 YELLOW = (255, 255, 0)
 LIGHTRED = (255, 150 ,150)
+DEEPOBS = (40, 36, 36)
 
 
 # グリッド設定
@@ -50,17 +52,13 @@ class Plant(pygame.sprite.Sprite):
         self.instance = instance
         self.image = pygame.Surface((80, 80), pygame.SRCALPHA)  # 透過サーフェス
         self.rect = self.image.get_rect()
-        self.animation = False
-        self.attack_animation = False
-        self.path = "Assets/Plant"
-        load_animation_frames(self)
         self.rect.x = x
         self.rect.y = y
         self.peas = pygame.sprite.Group()
         self.last_shot = instance.current_time
         self.name = "Plant"
         self.upper_plant = "StrongPlant"
-        self.levelup_cost = 30
+        self.color = WHITE
         self.cost = 10
         self.attack_interval = 1000
 
@@ -77,6 +75,11 @@ class Plant(pygame.sprite.Sprite):
 
         instance.all_sprites.add(self)
         instance.plants.add(self)
+
+        self.animation = False
+        self.attack_animation = False
+        self.art_count = 0
+        self.attack_count = 0
        
     def update(self):
         self.current_time = self.instance.current_time
@@ -94,110 +97,8 @@ class Plant(pygame.sprite.Sprite):
         self.peas.add(pea)
         self.instance.all_sprites.add(pea)
 
-    def show_levelup_text(self):
-        self.LevelupButton(self, self.instance)
-        self.noLevelupButton(self, self.instance)
-        self.Leveluptext(self)
-        
     def clicked(self):
         self.leveluptext = True
-
-    class LevelupButton(pygame.sprite.Sprite):
-        def __init__(self, plant, instance):
-            super().__init__()
-            self.rect = pygame.Rect(plant.rect.x , plant.rect.y -30, 30, 30)
-            self.image = pygame.Surface((50, 50), pygame.SRCALPHA)  # 透明対応
-            self.image.fill((0, 0, 0, 0))  # 完全透明にする
-            self.plant = plant
-            self.draw()
-
-            self.screen = plant.screen
-            self.instance = instance
-            instance.buttons.add(self)
-            plant.button_sprites.add(self)
-            
-        def draw(self):
-            pygame.draw.rect(self.image, BLACK, (0,0, 40, 25), width=2)
-            font = pygame.font.SysFont(None, 30)
-            text = font.render("OK", True, BLACK)
-            text_rect = text.get_rect(center=self.rect.center)
-            self.image.blit(text, (5,5))
-
-
-
-        def Process(self):
-            self.current_point = self.instance.points
-            if self.current_point >= self.plant.levelup_cost:
-                    self.upper_class = globals().get(self.plant.upper_plant)
-                    self.new_plant = self.upper_class(self.plant.rect.x, self.plant.rect.y, self.instance)
-                    self.plant.kill()
-                    self.instance.all_sprites.add(self.new_plant)
-                    self.instance.plants.add(self.new_plant)
-                    self.instance.points -= self.plant.levelup_cost
-                    for sprite in self.plant.button_sprites:
-                        sprite.kill()
-                        del sprite
-            else:
-                    self.new_error = Error(self.screen, "You don't have enough points!")
-                    self.instance.texts.add(self.new_error)
-        
-        def update(self):
-            if not self.plant.alive():  # 親が生存しているかチェック
-                self.kill()  # 自分も削除
-        
-
-    class noLevelupButton(pygame.sprite.Sprite):
-            def __init__(self, plant, instance):
-                super().__init__()
-                self.rect = pygame.Rect(plant.rect.x + 40, plant.rect.y -30, 30, 30)
-                self.image = pygame.Surface((50, 50), pygame.SRCALPHA)  # 透明対応
-                self.image.fill((0, 0, 0, 0))  # 完全透明にする
-                self.draw()
-                self.plant = plant
-                self.screen = plant.screen
-                self.instance = instance
-                instance.buttons.add(self)
-                plant.button_sprites.add(self)
-            
-            def draw(self):
-                pygame.draw.rect(self.image, BLACK, (0, 0, 40, 25), width=2)
-                font = pygame.font.SysFont(None, 30)
-                text = font.render("NO!", True, BLACK)
-                text_rect = text.get_rect(center=self.rect.center)
-                self.image.blit(text, (5, 5))
-
-            def Process(self):
-                self.plant.leveluptext = False
-                for sprite in self.plant.button_sprites:
-                    sprite.kill()
-                    del sprite
-
-            def update(self):
-                if not self.plant.alive():  # 親が生存しているかチェック
-                    self.kill()  # 自分も削除
-                    
-    class Leveluptext(pygame.sprite.Sprite):
-        def __init__(self, plant):
-            super().__init__()
-            self.rect = pygame.Rect(plant.rect.x, plant.rect.y - 50, 200, 30)  # メッセージ表示位置
-            self.image = self.image = pygame.Surface((120, 50), pygame.SRCALPHA)  # 透明対応
-            self.image.fill((0, 0, 0, 0))  # 完全透明にする
-            self.draw()
-            plant.button_sprites.add(self)
-            plant.instance.buttons.add(self)
-            self.plant= plant
-
-        def draw(self):
-            font = pygame.font.SysFont(None, 36)
-            level_up_message = font.render("Level up?", True, BLACK)
-            self.image.blit(level_up_message, (0, 5))
-
-        def Process(self):
-            pass
-
-        def update(self):
-            if not self.plant.alive():  # 親が生存しているかチェック
-                self.kill()  # 自分も削除
 
     class Pea(pygame.sprite.Sprite):
         def __init__(self, x, y):
@@ -213,8 +114,8 @@ class Plant(pygame.sprite.Sprite):
             
             self.animation = False
             self.attack_animation = False
-            self.path = "Assets/Pea"
-            load_animation_frames(self)
+            self.art_count = 0
+            self.attack_count = 0
 
         def draw_hp(self, screen):
             pass
@@ -237,13 +138,11 @@ class StrongPlant(Plant):
         self.max_hp = 200
         self.hp = self.max_hp
 
-        self.path = "Assets/StrongPlant/StrongPlant"
+        
         self.animation = True
         self.attack_animation = False
-        self.frame_count = 0  # アニメーションのフレーム管理
-        self.animation_frames = []  # アニメーションフレームを格納するリスト
-        self.frames = 40
-        load_animation_frames(self)
+        self.art_count = 0
+        self.attack_count = 0
         
     def draw_hp(self, screen):
         """HPバーをプラントの上に描画"""
@@ -275,12 +174,13 @@ class Rock(pygame.sprite.Sprite):
         super().__init__()
         self.instance = instance
         self.screen = instance.screen
-        self.name = "Rock"
         self.image = pygame.Surface((80, 80), pygame.SRCALPHA)
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
+        self.name = "Rock"
         self.upper_plant = "Obsidian"
+        self.color = YELLOW
         self.levelup_cost = 30
         self.leveluptext = False
         self.attack = 0
@@ -297,10 +197,11 @@ class Rock(pygame.sprite.Sprite):
 
         self.button_sprites = pygame.sprite.Group()
 
-        self.path = "Assets/Rock"
+        
         self.animation = False
         self.attack_animation = False
-        load_animation_frames(self)
+        self.art_count = 0
+        self.attack_count = 0
 
     def update(self):
         if self.hp <= 0:
@@ -312,115 +213,15 @@ class Rock(pygame.sprite.Sprite):
         if self.hp <= 0:
             self.kill()
 
-    def show_levelup_text(self):
-        self.LevelupButton(self, self.instance)
-        self.noLevelupButton(self, self.instance)
-        self.Leveluptext(self)
-
     def clicked(self):
         self.leveluptext = True
-
-
-    class LevelupButton(pygame.sprite.Sprite):
-        def __init__(self, plant, instance):
-            super().__init__()
-            self.rect = pygame.Rect(plant.rect.x , plant.rect.y -30, 30, 30)
-            self.image = pygame.Surface((50, 50), pygame.SRCALPHA)  # 透明対応
-            self.image.fill((0, 0, 0, 0))  # 完全透明にする
-            self.plant = plant
-            self.draw()
-
-            self.screen = plant.screen
-            self.instance = instance
-            instance.buttons.add(self)
-            plant.button_sprites.add(self)
-            
-        def draw(self):
-            pygame.draw.rect(self.image, BLACK, (0,0, 40, 25), width=2)
-            font = pygame.font.SysFont(None, 30)
-            text = font.render("OK", True, BLACK)
-            text_rect = text.get_rect(center=self.rect.center)
-            self.image.blit(text, (5,5))
-
-
-
-        def Process(self):
-            self.current_point = self.instance.points
-            if self.current_point >= self.plant.levelup_cost:
-                    self.upper_class = globals().get(self.plant.upper_plant)
-                    self.new_plant = self.upper_class(self.plant.rect.x, self.plant.rect.y, self.instance)
-                    self.plant.kill()
-                    self.instance.all_sprites.add(self.new_plant)
-                    self.instance.plants.add(self.new_plant)
-                    self.instance.points -= self.plant.levelup_cost
-                    for sprite in self.plant.button_sprites:
-                        sprite.kill()
-                        del sprite
-            else:
-                    self.new_error = Error(self.screen, "You don't have enough points!")
-                    self.instance.texts.add(self.new_error)
-
-        def update(self):
-            if not self.plant.alive():  # 親が生存しているかチェック
-                self.kill()  # 自分も削除
-        
-    class noLevelupButton(pygame.sprite.Sprite):
-            def __init__(self, plant, instance):
-                super().__init__()
-                self.rect = pygame.Rect(plant.rect.x + 40, plant.rect.y -30, 30, 30)
-                self.image = pygame.Surface((50, 50), pygame.SRCALPHA)  # 透明対応
-                self.image.fill((0, 0, 0, 0))  # 完全透明にする
-                self.draw()
-                self.plant = plant
-                self.screen = plant.screen
-                self.instance = instance
-                instance.buttons.add(self)
-                plant.button_sprites.add(self)
-            
-            def draw(self):
-                pygame.draw.rect(self.image, BLACK, (0, 0, 40, 25), width=2)
-                font = pygame.font.SysFont(None, 30)
-                text = font.render("NO!", True, BLACK)
-                text_rect = text.get_rect(center=self.rect.center)
-                self.image.blit(text, (5, 5))
-
-            def Process(self):
-                self.plant.leveluptext = False
-                for sprite in self.plant.button_sprites:
-                    sprite.kill()
-                    del sprite
-
-            def update(self):
-                if not self.plant.alive():  # 親が生存しているかチェック
-                    self.kill()  # 自分も削除
-                    
-    class Leveluptext(pygame.sprite.Sprite):
-        def __init__(self, plant):
-            super().__init__()
-            self.rect = pygame.Rect(plant.rect.x, plant.rect.y - 50, 200, 30)  # メッセージ表示位置
-            self.image = self.image = pygame.Surface((120, 50), pygame.SRCALPHA)  # 透明対応
-            self.image.fill((0, 0, 0, 0))  # 完全透明にする
-            self.draw()
-            plant.button_sprites.add(self)
-            plant.instance.buttons.add(self)
-            self.plant = plant
-
-        def draw(self):
-            font = pygame.font.SysFont(None, 36)
-            level_up_message = font.render("Level up?", True, BLACK)
-            self.image.blit(level_up_message, (0, 5))
-
-        def Process(self):
-            pass
-        
-        def update(self):
-            if not self.plant.alive():  # 親が生存しているかチェック
-                self.kill()  # 自分も削除
-
+   
 class Obsidian(Rock):
     def __init__(self, x, y, instance):
         super().__init__(x, y, instance)
-        
+        self.name = "Obsidian"
+        self.color = DEEPOBS
+
         self.max_hp = 600
         self.hp = self.max_hp
         self.attack = 40
@@ -428,16 +229,8 @@ class Obsidian(Rock):
         self.is_attacking = False  # 攻撃中フラグ
         self.animation = True
         self.attack_animation = True
-        self.path = "Assets/Obsidian/Obsidian"
-        self.attack_path = "Assets/ObsidianAttack/ObsidianAttack"
-        self.frame_count = 0  
-        self.animation_frames = []  
-        self.frames = 70
-        self.attack_frame_count = 0
-        self.attack_animation_frames = []
-        self.attack_frames = 30
-        load_animation_frames(self)
-        load_attack_animation_frames(self)
+        self.art_count = 0
+        self.attack_count = 0
         
     def take_damage(self, damage, zombie):
         """Nutにダメージを与える"""
@@ -447,6 +240,12 @@ class Obsidian(Rock):
         if self.hp <= 0:
             self.kill()
     
+    def update(self):
+        if self.is_attacking and not self.is_attacking.alive():
+            self.is_attacking = False
+        if self.hp <= 0:
+            self.kill()
+       
     def clicked(self):
         self.leveluptext = True
 
@@ -460,14 +259,11 @@ class Fire(Plant):
         self.upper_plant = "StrongFire"
         self.instance = instance
 
-        self.path = "Assets/Fire/Fire"
         self.animation = True
         self.attack_animation = False
-        self.frame_count = 0  
-        self.animation_frames = []  
-        self.frames = 70
-        load_animation_frames(self)
-        
+        self.art_count = 0
+        self.attack_count = 0
+
     def shoot_pea(self):
         pea = self.FirePea(self.rect.x + self.rect.width, self.rect.y + 20, self)  
         self.peas.add(pea)
@@ -476,15 +272,13 @@ class Fire(Plant):
     class FirePea(Plant.Pea):
         def __init__(self, x, y, plant):
             super().__init__(x, y)
+            self.name = "FirePea"
             self.plant = plant
             self.attack = 10
             
             self.animation = True
-            self.path = "Assets/FirePea/FirePea"
-            self.frame_count = 0  
-            self.animation_frames = []  
-            self.frames = 25
-            load_animation_frames(self)
+            self.art_count = 0
+            self.attack_count = 0
 
         def collide(self, zombie):
             self.collide_pos = get_grid_center(zombie.rect.x, zombie.rect.y)
@@ -498,6 +292,7 @@ class Fire(Plant):
         class Fire_trap(pygame.sprite.Sprite):
             def __init__(self, pos, plant):
                 super().__init__()
+                self.name = "FireTrap"
                 self.image = pygame.Surface((GRID_WIDTH, GRID_HEIGHT), pygame.SRCALPHA)
                 self.spawn = pygame.time.get_ticks()
                 self.interval = 5000
@@ -507,12 +302,9 @@ class Fire(Plant):
 
                 self.animation = True
                 self.attack_animation = False
-                self.path = "Assets/FireTrap/FireTrap"
-                self.frame_count = 0  
-                self.animation_frames = []  
-                self.frames = 25
-                load_animation_frames(self)
-                       
+                self.art_count = 0
+                self.attack_count = 0
+
             def collide(self, zombie):
                 self.current_time = pygame.time.get_ticks()
                 if self.current_time % 1000 < 50:
@@ -535,12 +327,7 @@ class Water(Plant):
         self.attack_interval = 2000
 
         self.animation = True
-        self.path = "Assets/Water/Water"
-        self.frame_count = 0  
-        self.animation_frames = []  
-        self.frames = 50
-        load_animation_frames(self)
-        
+
     def shoot_pea(self):
         pea = self.WaterPea(self.rect.x + self.rect.width, self.rect.y + 20, self)  
         self.peas.add(pea)
@@ -549,6 +336,7 @@ class Water(Plant):
     class WaterPea(Plant.Pea):
         def __init__(self, x, y, plant):
             super().__init__(x, y)
+            self.name = "WaterPea"
             self.image = pygame.Surface((100, 5), pygame.SRCALPHA)
             self.plant = plant
             self.attack = 30
@@ -557,11 +345,6 @@ class Water(Plant):
             self.speed = 5
 
             self.animation = True
-            self.path = "Assets/WaterPea/WaterPea"
-            self.frame_count = 0  
-            self.animation_frames = []  
-            self.frames = 30
-            load_animation_frames(self)
 
         def update(self):
             self.rect.x += self.speed  # 右に移動
@@ -585,11 +368,6 @@ class Thunder(Plant):
         self.name = "Thunder"
 
         self.animation = True
-        self.path = "Assets/Thunder/Thunder"
-        self.frame_count = 0  
-        self.animation_frames = []  
-        self.frames = 50
-        load_animation_frames(self)
 
     def shoot_pea(self):
         pea = self.ThunderPea(self.rect.x + self.rect.width, self.rect.y + 20, self)
@@ -599,6 +377,7 @@ class Thunder(Plant):
     class ThunderPea(Plant.Pea):
         def __init__(self, x, y, plant):
             super().__init__(x, y)
+            self.name = "ThunderPea"
             self.image.fill((255, 255, 0))  # 雷の弾
             self.attack = 25
             self.plant = plant
@@ -606,11 +385,7 @@ class Thunder(Plant):
             self.hit_zombies = set()  # すでに当たったゾンビを記録するセット
 
             self.animation = True
-            self.path = "Assets/ThunderPea/ThunderPea"
-            self.frame_count = 0  
-            self.animation_frames = []  
-            self.frames = 50
-            load_animation_frames(self)
+
 
         def update(self):
             self.rect.x += self.speed  # 弾を前進させる
@@ -688,13 +463,8 @@ class Zombie(pygame.sprite.Sprite):
 
         self.animation = False
         self.attack_animation = True
-        self.path = "Assets/Zombie"
-        self.attack_path = "Assets/ZombieAttack/ZombieAttack"
-        self.attack_frame_count = 0  # アニメーションのフレーム管理
-        self.attack_animation_frames = []  # アニメーションフレームを格納するリスト
-        self.attack_frames = 30
-        load_animation_frames(self)
-        load_attack_animation_frames(self)
+        self.art_count = 0
+        self.attack_count = 0
     
     def collide_stop(self, collide_Nut):
         """ ゾンビをナッツの手前で止める """
@@ -721,6 +491,7 @@ class Zombie(pygame.sprite.Sprite):
             self.instance.deadcount += 1
             self.kill()
             del self
+        
     
     def message(self, screen):
         """ ゾンビの上にテキストを表示する """
@@ -784,11 +555,8 @@ class YellowItem(pygame.sprite.Sprite):
 
         self.animation = True
         self.attack_animation = False
-        self.path = "Assets/YellowItem/YellowItem"
-        self.frame_count = 0
-        self.frames =  50
-        self.animation_frames = []  
-        load_animation_frames(self)
+        self.art_count = 0
+        self.attack_count = 0
         
     def update(self):
         self.rect.y += self.speed  
@@ -851,4 +619,4 @@ class Totem(pygame.sprite.Sprite):
             drop_item_text = DropItemText(key, value, (self.rect.x, self.rect.y - (30 + i * 20)), self.instance)
             self.instance.texts.add(drop_item_text)
             i += 1
-            
+

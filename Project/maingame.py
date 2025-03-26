@@ -5,6 +5,7 @@ from Back_Process import *
 import objgraph
 import gc
 import graphviz
+from Load_image import *
 
 
 
@@ -45,6 +46,7 @@ def get_grid_center(mouse_x, mouse_y): #マス目対応
             if GRID_C[i] <= mouse_x < GRID_C[i] + GRID_WIDTH and GRID_V[j] <= mouse_y < GRID_V[j] + GRID_HEIGHT:
                 return GRID_CENTER[i][j]  # グリッドの中心座標を返す
     return None  # 該当するグリッドがない場合
+
 
 
 class maingame():
@@ -90,6 +92,7 @@ class maingame():
         self.buttons = pygame.sprite.Group()
         self.texts = pygame.sprite.Group()
         self.traps = pygame.sprite.Group()
+        self.zoom_buttons = pygame.sprite.Group()
 
         self.plant = Plant(GRID_CENTER[2][1][0], GRID_CENTER[2][1][1], self)
         self.all_sprites.add(self.plant)
@@ -100,8 +103,9 @@ class maingame():
         self.zombies.add(self.zombie)
 
         back_image = pygame.image.load("Assets/Back.png")
-        
         self.background = pygame.image.load("Assets/BackGround1.png").convert()
+        self.arrow_image = pygame.image.load("Assets/Arrow.png")
+
         screen.blit(self.background, (0,0))
         Plantbutton(self)
         Rockbutton(self)
@@ -109,8 +113,6 @@ class maingame():
         Firebutton(self)
         Waterbutton(self)
         Thunderbutton(self)
-
-
         
         while running:
             mouse_x, mouse_y = pygame.mouse.get_pos()
@@ -220,11 +222,11 @@ class maingame():
             # draw系
 
             for trap in self.traps:
-                drawart(screen, trap)
+                trap.art_count = drawart(screen, trap.animation, trap.rect.topleft, trap.name, trap.art_count)
             self.all_sprites.draw(screen)
 
             for plant in self.all_sprites:  #絵を描写
-                drawart(screen, plant)
+                plant.art_count = drawart(screen, plant.animation, plant.rect.topleft, plant.name, plant.art_count)
             
             for plant in self.plants: #HP
                 draw_hp(screen, plant, GREEN)
@@ -268,19 +270,27 @@ class maingame():
                 if zombie.collide and zombie.collide_Nut and not zombie.collide_Nut.alive():
                     zombie.collide = False  # ナッツが消えたら再び移動
                     zombie.collide_Nut = None
-                drawattack(screen, zombie)
-
+                if zombie.is_attacking and not zombie.is_attacking.alive():
+                    zombie.is_attacking = False
+                if zombie.is_attacking:
+                    attack_name = f"{zombie.name}Attack"
+                    zombie.attack_count = drawart(screen, zombie.attack_animation, zombie.is_attacking.rect.topleft, attack_name, zombie.attack_count)
+            
             for plant in self.plants:
-                if plant.leveluptext:
-                    plant.show_levelup_text()
-                    plant.leveluptext = False
-                drawattack(screen, plant)
+                if hasattr(plant, "is_attacking"):
+                    if plant.is_attacking:
+                        attack_name = f"{plant.name}Attack"
+                        plant.attack_count = drawart(screen, plant.attack_animation, plant.is_attacking.rect.topleft, attack_name, plant.attack_count)
 
             self.buttons.draw(screen)
             self.buttons.update()
             self.traps.draw(screen)
             for text in self.texts:
                 text.draw(screen)
+
+            self.traps.update()
+            self.all_sprites.update()
+            self.texts.update()
 
             for plant in self.plants:  # 衝突処理(タネ、ゾンビ)
                 if hasattr(plant, "shoot_pea"):
@@ -303,9 +313,7 @@ class maingame():
                     if collided_zombie:
                         trap.collide(collided_zombie)
              
-            self.traps.update()
-            self.all_sprites.update()
-            self.texts.update()
+            
             
             pygame.display.flip()
 
@@ -315,33 +323,13 @@ class maingame():
             
         self.game_over_screen()  # ゲームオーバー画面を表示
     
-
     def add_plant(self, pos_x, pos_y):
         plant_class = globals().get(self.selected_plant)  # 選択されたプラントのクラスを取得
         plant_cost = globals().get(f"{self.selected_plant}_cost", None)  # コストを取得
         plant_items = globals().get(f"{self.selected_plant}_item", {})  # 必要なアイテムの辞書を取得（なければ空辞書）
 
-        # ポイントとアイテムのチェック
-        if plant_class and plant_cost is not None:
-            if self.points < plant_cost:
-                error_text = Error(screen, "You don't have enough points")
-                self.texts.add(error_text)
-                return
-            
-            # アイテム不足をチェック
-            for item, required_amount in plant_items.items():
-                if self.item.get(item, 0) < required_amount:
-                    error_text = Error(screen, f"You don't have enough {item}")
-                    self.texts.add(error_text)
-                    return
-            
-            # ポイントを減算
-            self.points -= plant_cost
-
-            # アイテムを消費
-            for item, required_amount in plant_items.items():
-                self.item[item] -= required_amount
-
+        
+        if item_consume(plant_cost, plant_items, self):
             # プラントを追加
             plant_class(pos_x, pos_y, self)
             self.plant_added = True  # プラントが追加されたフラグ
@@ -355,7 +343,7 @@ class maingame():
         overlay.fill((0, 0, 0, 50))  # 半透明の黒を適用
 
         pause_overlay.blit(overlay, (0, 0))  # 半透明の黒を合成
-        screen.blit(pause_overlay, (0, 0))  # 画面に描画
+        screen.blit(pause_overlay, (0, 0))  # 画面に描画z
 
         while self.paused:
 
@@ -401,7 +389,9 @@ class maingame():
         screen.blit(back_image, (-350, -450))
 
         # **オフセットの初期化**
-        init_dif_x, init_dif_y = 0, 0  
+        init_dif_x, init_dif_y = 0, 0
+
+        self.plant_levelup()
 
         while self.zooming:
             step = 0.08  # 1回のズーム変化量（0.08ずつ拡大/縮小）
@@ -447,7 +437,55 @@ class maingame():
             # **イベント処理**
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    self.start_zoom_out()
+                    pygame.quit()
+                    exit()
+                
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        self.start_zoom_out()
+
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1:  # 左クリック
+                        # ボタンの処理
+                        for button in self.zoom_buttons:
+                            if button.rect.collidepoint(event.pos):
+                                button.Process()
+
+                                break  # クリック処理をボタンで完了するためにループを抜ける
+            
+            text = self.font.render(f"{self.zoom_to.name}", True, WHITE)
+            screen.blit(text, (610, 30))
+            screen.blit(art_dict[self.zoom_to.name].image[0], (400, -150))
+            screen.blit(self.arrow_image, (630, 130))
+            text = self.font.render(f"{self.upper_class_name}", True, WHITE)
+            screen.blit(text, (610, 210))
+            screen.blit(art_dict[self.upper_class_name].image[0], (400, 30))
+
+            text = self.font_small.render("Level Up", True, WHITE)
+            screen.blit(text, (620, 340))
+            text = self.font_small.render("Requirements", True, WHITE)
+            screen.blit(text, (600, 360))
+            
+            self.plant_cost = globals().get(f"{self.zoom_to.upper_plant}_cost", None)  # コストを取得
+            self.plant_items = globals().get(f"{self.zoom_to.upper_plant}_item", {})  # 必要なアイテムの辞書を取得（なければ空辞書）
+
+            i = 0
+            text_item((600, 390), "points", self.points, self.plant_cost, self)
+            for key, value in self.plant_items.items(): #辞書にアイテムを追加
+                text_item((610, 410 + i * 20), key, self.item[key], value, self)
+                i += 1    
+
+            text = self.font_small.render("Level Up?", True, WHITE)
+            screen.blit(text, (455, 450))
+
+            #名前表示
+            self.big_font = pygame.font.SysFont(None, 100)
+            text = self.big_font.render(f"{self.zoom_to.name}", True, self.zoom_to.color)
+            screen.blit(text, (10, 400))
+
+            self.zoom_buttons.draw(screen)
+            for text in self.texts:
+                text.draw(screen)
 
             pygame.display.flip()
             clock.tick(30)
@@ -490,6 +528,18 @@ class maingame():
         
         self.zoom_duration += pygame.time.get_ticks() - self.zoom_start_time
 
+    def plant_levelup(self):
+
+        self.upper_class = globals().get(self.zoom_to.upper_plant)
+        upper_plant = self.upper_class(0, 0, self)
+        self.upper_class_name = upper_plant.name
+        upper_plant.kill()
+
+        new_button = LevelupButton(self.zoom_to, self.upper_class, self)
+        self.zoom_buttons.add(new_button)
+        new_button = noLevelupButton(self.zoom_to, self)
+        self.zoom_buttons.add(new_button)
+
     def start_zoom_in(self, plant):
         self.zoom_to = plant
         self.zooming = True
@@ -500,7 +550,6 @@ class maingame():
         self.zooming_out = True
         self.zooming = False  # **ズームインを停止**
         self.zoom_frame = 30  # **ズームアウト用のアニメーションフレーム設定**
-
 
     def game_over_screen(self):
         """ゲームオーバー画面の描画"""
