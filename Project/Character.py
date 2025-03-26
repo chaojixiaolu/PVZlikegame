@@ -2,7 +2,7 @@ import pygame
 import random
 from Back_Process import *
 import math
-from Load_image import *
+from Load_data import *
 
 pygame.init()
 
@@ -492,7 +492,6 @@ class Zombie(pygame.sprite.Sprite):
             self.kill()
             del self
         
-    
     def message(self, screen):
         """ ゾンビの上にテキストを表示する """
         if self.message_text:

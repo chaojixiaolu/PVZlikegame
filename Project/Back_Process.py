@@ -1,7 +1,7 @@
 import pygame
 import random
 import os
-from Load_image import *
+from Load_data import *
 
 screen_width = 800
 screen_height = 600
@@ -38,6 +38,12 @@ def get_grid_center(mouse_x, mouse_y): #マス目対応
                 return GRID_CENTER[i][j]  # グリッドの中心座標を返す
     return None  # 該当するグリッドがない場合
 
+pygame.init()
+
+FONT = pygame.font.SysFont(None, 36)
+FONT_small = pygame.font.SysFont(None, 30)
+Button_back = pygame.image.load("Assets/Buttonback.png")
+FONT_smaller = pygame.font.SysFont(None, 23)
 
 
 def draw_background():
@@ -84,17 +90,27 @@ class Plantbutton(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=self.center)
         instance.buttons.add(self)
         self.mode = "Plant"
+        self.cost = plant_data[self.mode]["cost"]
+        self.item = plant_data[self.mode]["item"]
+        self.frame = 0
         self.draw()
 
     def draw(self):
-        self.cost = globals().get(f"{self.mode}_cost")
-        self.text = self.instance.font.render(f"{self.cost}", True, BLACK)
-        self.text_rect = self.text.get_rect(center=(40,20))
-        self.image.blit(self.text, self.text_rect)
+        self.image.blit(Button_back, (0,0))
+        self.frame = drawart(self.image, True, (0,0), self.mode, self.frame)
+        self.text = self.instance.font.render(f"{self.cost}", True, WHITE)
+        text_item((self.rect.x, self.rect.y + 40), "points", self.instance.points, self.cost, self.instance, FONT_smaller, point_text="", dif=20)
+        i=1
+        for key, value in self.item.items():
+            text_item((self.rect.x, self.rect.y + 60 * i), key, self.instance.item[key], value, self.instance, FONT_smaller, dif=40)
+            i += 1
 
     def Process(self):
         self.instance.selected_plant = self.mode
     
+    def update(self):
+        self.draw()
+
 class Rockbutton(Plantbutton):
     def __init__(self, instance):
         super().__init__(instance)
@@ -103,6 +119,8 @@ class Rockbutton(Plantbutton):
         self.image.fill(self.color)  # 色を更新
         self.rect = self.image.get_rect(center=self.center)  # 位置を更新
         self.mode = "Rock"
+        self.cost = plant_data[self.mode]["cost"]
+        self.item = plant_data[self.mode]["item"]
         self.draw()
 
 class Firebutton(Plantbutton):
@@ -113,6 +131,8 @@ class Firebutton(Plantbutton):
         self.image.fill(self.color)  # 色を更新
         self.rect = self.image.get_rect(center=self.center)  # 位置を更新
         self.mode = "Fire"
+        self.cost = plant_data[self.mode]["cost"]
+        self.item = plant_data[self.mode]["item"]
         self.draw()
 
 class Waterbutton(Plantbutton):
@@ -123,6 +143,8 @@ class Waterbutton(Plantbutton):
         self.image.fill(self.color)  # 色を更新
         self.rect = self.image.get_rect(center=self.center)  # 位置を更新
         self.mode = "Water"
+        self.cost = plant_data[self.mode]["cost"]
+        self.item = plant_data[self.mode]["item"]
         self.draw()
 
 class Thunderbutton(Plantbutton):
@@ -133,6 +155,8 @@ class Thunderbutton(Plantbutton):
         self.image.fill(self.color)  # 色を更新
         self.rect = self.image.get_rect(center=self.center)  # 位置を更新
         self.mode = "Thunder"
+        self.cost = plant_data[self.mode]["cost"]
+        self.item = plant_data[self.mode]["item"]
         self.draw()
 
 class PauseButton(pygame.sprite.Sprite):
@@ -308,21 +332,21 @@ def spawn_Zombie(instance, kind):
         instance.zombies.add(zombie_new)
         setattr(instance, f"{kind}_last_spawn_time", current_time)  # スポーン時間を更新
 
-def text_item(pos, item, limit, require, instance):
+def text_item(pos, item, limit, require, instance, font, point_text="points", dif=60):
+    pos_x, pos_y = pos
     if limit >= require:
         color = WHITE
     else:
         color = RED
-    font_small = pygame.font.SysFont(None, 30)
     if item == "points":
-        text = font_small.render("points", True, color)
-        instance.screen.blit(text, pos)
+        text = font.render(point_text, True, color)
+        instance.screen.blit(text, (pos_x, pos_y))
     else:
-        image = item_image_dict[item]
-        instance.screen.blit(image, pos)
+        image = item_image_dict[f"{item}_image"]
+        instance.screen.blit(image, (pos_x, pos_y-20))
     pos_x, pos_y = pos
-    text = font_small.render(f":{limit}/{require}", True, color)
-    instance.screen.blit(text, (pos_x + 60, pos_y))    
+    text = font.render(f":{limit}/{require}", True, color)
+    instance.screen.blit(text, (pos_x + dif, pos_y))    
 
 def item_consume(plant_cost, plant_items, instance):
     # ポイントとアイテムのチェック  
@@ -348,10 +372,4 @@ def item_consume(plant_cost, plant_items, instance):
             
             return True
             
-Plant_cost = 10
-StrongPlant_cost = 30
-Rock_cost = 5
-Obsidian_cost = 30
-Fire_cost = 20 ; Fire_item = {"fire element": 2}
-Water_cost = 15 ; Water_item = {"water element": 2}
-Thunder_cost = 15 ; Thunder_item = {"thunder element": 2}
+

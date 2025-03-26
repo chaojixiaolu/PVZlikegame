@@ -5,7 +5,7 @@ from Back_Process import *
 import objgraph
 import gc
 import graphviz
-from Load_image import *
+from Load_data import *
 
 
 
@@ -83,7 +83,7 @@ class maingame():
 
         self.points = 50
 
-        self.item = {}
+        self.item = {"fire element": 0, "water element": 0, "thunder element": 0}
 
         self.all_sprites = pygame.sprite.Group()
         self.zombies = pygame.sprite.Group()
@@ -313,8 +313,6 @@ class maingame():
                     if collided_zombie:
                         trap.collide(collided_zombie)
              
-            
-            
             pygame.display.flip()
 
             clock.tick(30)
@@ -325,8 +323,8 @@ class maingame():
     
     def add_plant(self, pos_x, pos_y):
         plant_class = globals().get(self.selected_plant)  # 選択されたプラントのクラスを取得
-        plant_cost = globals().get(f"{self.selected_plant}_cost", None)  # コストを取得
-        plant_items = globals().get(f"{self.selected_plant}_item", {})  # 必要なアイテムの辞書を取得（なければ空辞書）
+        plant_cost = plant_data[self.selected_plant]["cost"]
+        plant_items = plant_data[self.selected_plant]["item"]  # 必要なアイテムの辞書を取得（なければ空辞書）
 
         
         if item_consume(plant_cost, plant_items, self):
@@ -466,13 +464,13 @@ class maingame():
             text = self.font_small.render("Requirements", True, WHITE)
             screen.blit(text, (600, 360))
             
-            self.plant_cost = globals().get(f"{self.zoom_to.upper_plant}_cost", None)  # コストを取得
-            self.plant_items = globals().get(f"{self.zoom_to.upper_plant}_item", {})  # 必要なアイテムの辞書を取得（なければ空辞書）
+            self.plant_cost = plant_data[self.zoom_to.upper_plant]["cost"]
+            self.plant_items = plant_data[self.zoom_to.upper_plant]["item"]
 
             i = 0
-            text_item((600, 390), "points", self.points, self.plant_cost, self)
+            text_item((600, 390), "points", self.points, self.plant_cost, self, self.font_small)
             for key, value in self.plant_items.items(): #辞書にアイテムを追加
-                text_item((610, 410 + i * 20), key, self.item[key], value, self)
+                text_item((610, 410 + i * 20), key, self.item[key], value, self, self.font_small)
                 i += 1    
 
             text = self.font_small.render("Level Up?", True, WHITE)
